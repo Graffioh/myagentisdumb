@@ -6,8 +6,10 @@
 <textarea placeholder="Type your message..." bind:value={message}></textarea>
 
 <button
-  onclick={() => onsend(message)}
-  >Send</button
+  onclick={() => {
+    onsend(message);
+    message = "";
+  }}>Send</button
 >
 
 <style>
