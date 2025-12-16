@@ -2,28 +2,33 @@ import { AgentMessage, AgentToolCall } from "./types";
 import { toolDefinitions, toolImplementations } from "./tools/base";
 import { sendInspectionMessage } from "./sse-client";
 
-let CONTEXT: AgentMessage[] = [];
-let SYSTEM_PROMPT: string | null = null;
+let context: AgentMessage[] = [];
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY!;
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-// Main loop for the agent using OpenRouter API
-export async function runLoop(userInput: string, systemPrompt?: string) {
-    if (systemPrompt && !SYSTEM_PROMPT) {
-        SYSTEM_PROMPT = systemPrompt;
-    }
+const SYSTEM_PROMPT = `
+You are a helpful assistant that can answer questions and help with tasks.
+Your response should be concise and to the point.
 
-    CONTEXT.push({ role: "user", content: userInput });
+Format the bold, italic, underline, code, blockquote, list, image, and other special text with HTML.
+
+You have access to tools to help you with your tasks (if needed).
+
+Follow these rules strictly:
+- Never invent Tool arguments and these arguments MUST be valid JSON objects
+- If unsure, do NOT call tools
+`.trim();
+
+// Main loop for the agent using OpenRouter API
+export async function runLoop(userInput: string) {
+    context.push({ role: "user", content: userInput });
 
     while (true) {
-        const messages: AgentMessage[] = [];
-
-        if (SYSTEM_PROMPT) {
-            messages.push({ role: "system", content: SYSTEM_PROMPT });
-        }
-
-        messages.push(...CONTEXT);
+        const messages: AgentMessage[] = [
+            { role: "system", content: SYSTEM_PROMPT },
+            ...context,
+        ];
 
         sendInspectionMessage(`Agent is thinking...`);
 
@@ -54,8 +59,15 @@ export async function runLoop(userInput: string, systemPrompt?: string) {
         sendInspectionMessage(`📨 Model message: ${JSON.stringify(msg, null, 2)}`);
 
         const toolCalls: AgentToolCall[] = msg.tool_calls;
+
         if (toolCalls && toolCalls.length > 0) {
-            sendInspectionMessage(`Model decided to use TOOLS`);
+            sendInspectionMessage(`Model decided to use TOOLS: ${toolCalls.map(call => call.function.name).join(", ")}`);
+
+            context.push({
+                role: "assistant",
+                content: "",
+                tool_calls: toolCalls
+            });
 
             for (const call of toolCalls) {
                 const toolName = call.function.name;
@@ -70,13 +82,7 @@ export async function runLoop(userInput: string, systemPrompt?: string) {
 
                 const result = await toolImplementations[toolName](args);
 
-                CONTEXT.push({
-                    role: "assistant",
-                    content: "",
-                    tool_calls: toolCalls
-                });
-
-                CONTEXT.push({
+                context.push({
                     role: "tool",
                     tool_call_id: call.id,
                     content: JSON.stringify(result),
@@ -89,7 +95,7 @@ export async function runLoop(userInput: string, systemPrompt?: string) {
         sendInspectionMessage(`💬 Final Assistant message: ${msg.content}`);
 
         const finalContent = msg.content;
-        CONTEXT.push({ role: "assistant", content: finalContent });
+        context.push({ role: "assistant", content: finalContent });
 
         return finalContent;
     }
