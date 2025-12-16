@@ -1,9 +1,6 @@
-import dotenv from "dotenv";
 import { AgentMessage, AgentToolCall } from "./types";
 import { toolDefinitions, toolImplementations } from "./tools/base";
 import { sendInspectionMessage } from "./sse-client";
-
-dotenv.config();
 
 let CONTEXT: AgentMessage[] = [];
 let SYSTEM_PROMPT: string | null = null;

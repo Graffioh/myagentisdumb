@@ -1,4 +1,5 @@
 import { getWeather } from "./weather";
+import { getMovie } from "./film";
 
 export const toolDefinitions = [
     {
@@ -17,11 +18,31 @@ export const toolDefinitions = [
           required: ["location"]
         }
       }
+    },
+    {
+      type: "function",
+      function: {
+        name: "getMovie",
+        description: "Get information about a movie by title.",
+        parameters: {
+          type: "object",
+          properties: {
+            title: {
+              type: "string",
+              description: "Movie title such as 'The Dark Knight', 'Inception', etc."
+            }
+          },
+          required: ["title"]
+        }
+      }
     }
   ];
 
 export const toolImplementations = {
     getWeather: async ({ location }: { location: string }) => {
       return await getWeather(location);
+    },
+    getMovie: async ({ title }: { title: string }) => {
+      return await getMovie(title);
     }
 };
