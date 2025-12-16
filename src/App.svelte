@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Chat from './lib/Chat.svelte'
-  import Inspection from './lib/Inspection.svelte'
+  import Chat from "./lib/Chat.svelte";
+  import Inspection from "./lib/Inspection.svelte";
 </script>
 
 <main>

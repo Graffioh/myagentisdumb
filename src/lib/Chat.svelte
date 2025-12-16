@@ -14,8 +14,7 @@
   function updateChatText() {
     chatText = messages
       .map(
-        (m) =>
-          `<b>${m.role === "user" ? "You" : "Assistant"}:</b> ${m.content}`
+        (m) => `<b>${m.role === "user" ? "You" : "Assistant"}:</b> ${m.content}`
       )
       .join("\n\n");
   }

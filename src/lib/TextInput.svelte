@@ -4,7 +4,7 @@
 </script>
 
 <textarea
-  placeholder="Type your message..."
+  placeholder="Chat with the agent..."
   bind:value={message}
   onkeypress={(e) => {
     if (e.key === "Enter" && !e.shiftKey) {

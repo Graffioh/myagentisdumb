@@ -1,11 +1,17 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
 
-  type InspectionEvent = { ts: number; data: string; expanded?: boolean };
+  type InspectionEvent = {
+    id: number;
+    ts: number;
+    data: string;
+    expanded?: boolean;
+  };
 
   let events: InspectionEvent[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");
   let lastError = $state<string | null>(null);
+  let eventId = $state(0);
 
   let eventSource: EventSource | null = null;
 
@@ -13,7 +19,10 @@
     import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
 
   function pushEvent(data: string) {
-    const next = [...events, { ts: Date.now(), data, expanded: false }];
+    const next = [
+      ...events,
+      { id: eventId++, ts: Date.now(), data, expanded: false },
+    ];
     events = next.length > 300 ? next.slice(next.length - 300) : next;
   }
 
@@ -71,7 +80,7 @@
     {#if events.length === 0}
       <div class="empty">No events yet.</div>
     {:else}
-      {#each events as e (e.ts)}
+      {#each events as e (e.id)}
         {@const isExpanded = e.expanded ?? false}
         {@const multiline = isMultiline(e.data)}
         <div class="row">
@@ -82,7 +91,10 @@
                 <span class="arrow {isExpanded ? 'expanded' : ''}">▶</span>
               </button>
             {/if}
-            <pre class="data {isExpanded ? '' : 'collapsed'}">{isExpanded || !multiline ? e.data : getFirstLine(e.data)}</pre>
+            <pre class="data {isExpanded ? '' : 'collapsed'}">{isExpanded ||
+              !multiline
+                ? e.data
+                : getFirstLine(e.data)}</pre>
           </div>
         </div>
       {/each}
@@ -98,8 +110,9 @@
     border: 1px solid #ddd;
     border-radius: 8px;
     overflow: hidden;
-    background: #000000;
+    background: rgb(63, 51, 44);
     color: #e6edf3;
+    box-sizing: border-box;
   }
 
   .header {
@@ -211,6 +224,6 @@
   .data.collapsed {
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
   }
 </style>

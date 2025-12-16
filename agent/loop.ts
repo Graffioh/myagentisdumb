@@ -51,6 +51,10 @@ export async function runLoop(userInput: string, systemPrompt?: string) {
         }
 
         const data = await response.json();
+        
+        console.log("\n📨 Full API response:", JSON.stringify(data, null, 2));
+        sendInspectionMessage(`📨 Full API response: ${JSON.stringify(data, null, 2)}`);
+
         const msg = data.choices[0].message;
 
         console.log("\n📨 Model message:", JSON.stringify(msg, null, 2));
