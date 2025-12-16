@@ -3,6 +3,7 @@ import cors from "cors";
 import { AgentRequest, AgentResponse } from "./types";
 import { Request, Response } from "express";
 import { runLoop } from "./loop";
+import { clearSSEClient, setSSEClient } from "./sse-client";
 
 const app = express();
 
@@ -34,22 +35,19 @@ app.post("/api/agent", async (req: Request<AgentRequest>, res: Response<AgentRes
   }
 });
 
-app.get("/api/agent/events", async (req: Request, res: Response) => {
+app.get("/api/agent/events/inspection", async (req: Request, res: Response) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
   res.flushHeaders();
 
+  setSSEClient(res);
+
   res.write("data: Connected to SSE!\n\n");
 
-  const interval = setInterval(() => {
-    const message = `Hello at ${new Date().toISOString()}`;
-    res.write(`data: ${message}\n\n`);
-  }, 2000);
-
   req.on("close", () => {
-    clearInterval(interval);
+    clearSSEClient();
     res.end();
     console.log("SSE client disconnected");
   });

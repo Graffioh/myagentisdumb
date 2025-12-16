@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { AgentMessage, AgentToolCall } from "./types";
 import { toolDefinitions, toolImplementations } from "./tools/base";
+import { sendSSEMessage } from "./sse-client";
 
 dotenv.config();
 
@@ -28,6 +29,8 @@ export async function runLoop(userInput: string, systemPrompt?: string) {
         messages.push(...CONTEXT);
 
         console.log("\n *** Agent is thinking... ***");
+
+        sendSSEMessage(`Agent is thinking...`); 
 
         const response = await fetch(OPENROUTER_API_URL, {
             method: "POST",

@@ -8,30 +8,14 @@
   let chatText = $state("");
   let isSending = $state(false);
 
-  function escapeHtml(input: string) {
-    return input.replace(/[&<>"']/g, (ch) => {
-      switch (ch) {
-        case "&":
-          return "&amp;";
-        case "<":
-          return "&lt;";
-        case ">":
-          return "&gt;";
-        case '"':
-          return "&quot;";
-        case "'":
-          return "&#39;";
-        default:
-          return ch;
-      }
-    });
-  }
+  const BACKEND_URL =
+    import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
 
   function updateChatText() {
     chatText = messages
       .map(
         (m) =>
-          `<b>${m.role === "user" ? "You" : "Assistant"}:</b> ${escapeHtml(m.content)}`
+          `<b>${m.role === "user" ? "You" : "Assistant"}:</b> ${m.content}`
       )
       .join("\n\n");
   }
@@ -45,7 +29,7 @@
     isSending = true;
 
     try {
-      const response = await fetch("http://localhost:3002/api/agent", {
+      const response = await fetch(BACKEND_URL + "/agent", {
         method: "POST",
         body: JSON.stringify({ prompt: trimmed }),
         headers: { "Content-Type": "application/json" },

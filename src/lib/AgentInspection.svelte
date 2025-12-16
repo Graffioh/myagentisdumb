@@ -9,13 +9,16 @@
 
   let eventSource: EventSource | null = null;
 
+  const BACKEND_URL =
+    import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
+
   function pushEvent(data: string) {
     const next = [...events, { ts: Date.now(), data }];
     events = next.length > 300 ? next.slice(next.length - 300) : next;
   }
 
   onMount(() => {
-    eventSource = new EventSource("http://localhost:3002/api/agent/events");
+    eventSource = new EventSource(BACKEND_URL + "/agent/events/inspection");
 
     eventSource.onopen = () => {
       status = "connected";
@@ -23,7 +26,6 @@
     };
 
     eventSource.onmessage = (event: MessageEvent) => {
-      // Intentionally NOT fed into chat messages; this is inspection-only.
       pushEvent(String(event.data ?? ""));
     };
 
@@ -152,5 +154,3 @@
     color: #e6edf3;
   }
 </style>
-
-
