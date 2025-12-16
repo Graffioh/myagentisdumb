@@ -10,8 +10,12 @@ export function clearSSEClient() {
     sseClient = null;
 }
 
-export function sendSSEMessage(message: string) {
+export function sendInspectionMessage(message: string) {
     if (sseClient) {
-        sseClient.write(`data: ${message}\n\n`);
+        const lines = message.split(/\r?\n/);
+        for (const line of lines) {
+            sseClient.write(`data: ${line}\n`);
+        }
+        sseClient.write(`\n`);
     }
 }

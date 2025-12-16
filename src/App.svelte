@@ -1,12 +1,12 @@
 <script lang="ts">
   import Chat from './lib/Chat.svelte'
-  import AgentInspection from './lib/AgentInspection.svelte'
+  import Inspection from './lib/Inspection.svelte'
 </script>
 
 <main>
   <div id="panels">
     <div id="panel1">
-      <AgentInspection />
+      <Inspection />
     </div>
     <div id="panel2">
       <Chat />

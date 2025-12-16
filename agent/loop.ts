@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { AgentMessage, AgentToolCall } from "./types";
 import { toolDefinitions, toolImplementations } from "./tools/base";
-import { sendSSEMessage } from "./sse-client";
+import { sendInspectionMessage } from "./sse-client";
 
 dotenv.config();
 
@@ -29,8 +29,7 @@ export async function runLoop(userInput: string, systemPrompt?: string) {
         messages.push(...CONTEXT);
 
         console.log("\n *** Agent is thinking... ***");
-
-        sendSSEMessage(`Agent is thinking...`); 
+        sendInspectionMessage(`Agent is thinking...`); 
 
         const response = await fetch(OPENROUTER_API_URL, {
             method: "POST",
@@ -55,10 +54,12 @@ export async function runLoop(userInput: string, systemPrompt?: string) {
         const msg = data.choices[0].message;
 
         console.log("\n📨 Model message:", JSON.stringify(msg, null, 2));
+        sendInspectionMessage(`📨 Model message: ${JSON.stringify(msg, null, 2)}`); 
 
         const toolCalls: AgentToolCall[] = msg.tool_calls;
         if (toolCalls && toolCalls.length > 0) {
-            console.log("\n*** Model decided: USE A TOOL ***");
+            console.log("\n*** Model decided to use TOOLS ***");
+            sendInspectionMessage(`Model decided to use TOOLS`); 
 
             for (const call of toolCalls) {
                 const toolName = call.function.name;
@@ -66,6 +67,7 @@ export async function runLoop(userInput: string, systemPrompt?: string) {
 
                 console.log(`🔧 Tool call → ${toolName}`);
                 console.log("With arguments:", args);
+                sendInspectionMessage(`🔧 Tool call → ${toolName} \n with arguments: ${JSON.stringify(args, null, 2)}`); 
 
                 if (!toolImplementations[toolName]) {
                     throw new Error(`Unknown tool: ${toolName}`);
@@ -90,6 +92,7 @@ export async function runLoop(userInput: string, systemPrompt?: string) {
         }
 
         console.log("💬 Final Assistant message:", msg.content);
+        sendInspectionMessage(`💬 Final Assistant message: ${msg.content}`); 
 
         const finalContent = msg.content;
         CONTEXT.push({ role: "assistant", content: finalContent });

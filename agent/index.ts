@@ -44,12 +44,12 @@ app.get("/api/agent/events/inspection", async (req: Request, res: Response) => {
 
   setSSEClient(res);
 
-  res.write("data: Connected to SSE!\n\n");
+  res.write("data: Connected to Agent Inspection Channel!\n\n");
 
   req.on("close", () => {
     clearSSEClient();
     res.end();
-    console.log("SSE client disconnected");
+    console.log("SSE Client disconnected");
   });
 });
 

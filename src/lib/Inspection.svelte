@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
 
-  type InspectionEvent = { ts: number; data: string };
+  type InspectionEvent = { ts: number; data: string; expanded?: boolean };
 
   let events: InspectionEvent[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");
@@ -13,8 +13,20 @@
     import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
 
   function pushEvent(data: string) {
-    const next = [...events, { ts: Date.now(), data }];
+    const next = [...events, { ts: Date.now(), data, expanded: false }];
     events = next.length > 300 ? next.slice(next.length - 300) : next;
+  }
+
+  function isMultiline(data: string): boolean {
+    return data.includes("\n");
+  }
+
+  function getFirstLine(data: string): string {
+    return data.split("\n")[0];
+  }
+
+  function toggleExpand(event: InspectionEvent) {
+    event.expanded = !event.expanded;
   }
 
   onMount(() => {
@@ -60,9 +72,18 @@
       <div class="empty">No events yet.</div>
     {:else}
       {#each events as e (e.ts)}
+        {@const isExpanded = e.expanded ?? false}
+        {@const multiline = isMultiline(e.data)}
         <div class="row">
           <div class="ts">{new Date(e.ts).toLocaleTimeString()}</div>
-          <pre class="data">{e.data}</pre>
+          <div class="data-container">
+            {#if multiline}
+              <button class="expand-button" onclick={() => toggleExpand(e)}>
+                <span class="arrow {isExpanded ? 'expanded' : ''}">▶</span>
+              </button>
+            {/if}
+            <pre class="data {isExpanded ? '' : 'collapsed'}">{isExpanded || !multiline ? e.data : getFirstLine(e.data)}</pre>
+          </div>
         </div>
       {/each}
     {/if}
@@ -77,7 +98,7 @@
     border: 1px solid #ddd;
     border-radius: 8px;
     overflow: hidden;
-    background: #0b0f14;
+    background: #000000;
     color: #e6edf3;
   }
 
@@ -86,7 +107,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 10px 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(214, 214, 214, 0.224);
     background: rgba(255, 255, 255, 0.03);
   }
 
@@ -119,7 +140,7 @@
     padding: 8px 12px;
     font-size: 12px;
     color: #ff7b72;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(214, 214, 214, 0.224);
   }
 
   .stream {
@@ -138,12 +159,44 @@
     grid-template-columns: 90px 1fr;
     gap: 10px;
     padding: 6px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(214, 214, 214, 0.153);
   }
 
   .ts {
     font-size: 12px;
     color: rgba(230, 237, 243, 0.65);
+  }
+
+  .data-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .expand-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: rgba(230, 237, 243, 0.65);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .expand-button:hover {
+    color: #e6edf3;
+  }
+
+  .arrow {
+    font-size: 10px;
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+
+  .arrow.expanded {
+    transform: rotate(90deg);
   }
 
   .data {
@@ -152,5 +205,12 @@
     white-space: pre-wrap;
     word-break: break-word;
     color: #e6edf3;
+    flex: 1;
+  }
+
+  .data.collapsed {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 </style>
