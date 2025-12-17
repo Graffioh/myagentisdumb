@@ -2,14 +2,8 @@
   import { onDestroy, onMount } from "svelte";
   import DownloadSnapshot from "./DownloadSnapshot.svelte";
   import CurrentContext from "./CurrentContext.svelte";
-  import InspectionEventRow from "./InspectionEventRow.svelte";
-
-  type InspectionEvent = {
-    id: number;
-    ts: number;
-    data: string;
-    expanded?: boolean;
-  };
+  import EventRow from "./EventRow.svelte";
+  import type { InspectionEvent } from "../../agent/types";
 
   let events: InspectionEvent[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");
@@ -29,11 +23,13 @@
     events = next.length > 300 ? next.slice(next.length - 300) : next;
   }
 
-  function toggleExpand(event: InspectionEvent) {
-    event.expanded = !event.expanded;
+  function toggleExpand(eventId: number) {
+    events = events.map((e) =>
+      e.id === eventId ? { ...e, expanded: !e.expanded } : e
+    );
   }
 
-  function removeInspectionEvent(eventId: number) {
+  function removeEventRow(eventId: number) {
     events = events.filter((e) => e.id !== eventId);
   }
 
@@ -86,10 +82,10 @@
       <div class="empty">No inspection events yet.</div>
     {:else}
       {#each events as e (e.id)}
-        <InspectionEventRow
+        <EventRow
           event={e}
           onToggleExpand={toggleExpand}
-          onRemove={removeInspectionEvent}
+          onRemove={removeEventRow}
         />
       {/each}
     {/if}

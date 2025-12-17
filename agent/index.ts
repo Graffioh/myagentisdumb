@@ -17,6 +17,7 @@ app.use(cors(corsOptions));
 
 app.use(express.json());
 
+// Agent loop endpoint
 app.post("/api/agent", async (req: Request<AgentRequest>, res: Response<AgentResponse>) => {
   try {
     const { prompt } = req.body;
@@ -29,6 +30,7 @@ app.post("/api/agent", async (req: Request<AgentRequest>, res: Response<AgentRes
   }
 });
 
+// Server sent events (SSE) Inspection events endpoint
 app.get("/api/agent/events/inspection", async (req: Request, res: Response) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -47,6 +49,7 @@ app.get("/api/agent/events/inspection", async (req: Request, res: Response) => {
   });
 });
 
+// Server sent events (SSE) Context events endpoint
 app.get("/api/agent/events/context", async (req: Request, res: Response) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -65,6 +68,7 @@ app.get("/api/agent/events/context", async (req: Request, res: Response) => {
   });
 });
 
+// Delete context endpoint
 app.delete("/api/agent/context", async (req: Request, res: Response) => {
   try {
     clearContext();
@@ -75,6 +79,7 @@ app.delete("/api/agent/context", async (req: Request, res: Response) => {
   }
 });
 
+// Start the server
 app.listen(3002, () => {
   console.log("Agent backend running on http://localhost:3002");
   console.log("Listening for requests...");

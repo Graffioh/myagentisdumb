@@ -15,7 +15,7 @@
     import.meta.env.VITE_BACKEND_URL || "http://localhost:3002/api";
 
   async function deleteContext(e: MouseEvent) {
-    e.stopPropagation(); // Prevent header click from toggling expansion
+    e.stopPropagation(); 
     
     try {
       const response = await fetch(BACKEND_URL + "/agent/context", {

@@ -31,7 +31,6 @@ Follow these rules strictly:
 - If unsure, do NOT call tools
 `.trim();
 
-// Main loop for the agent using OpenRouter API
 export async function runLoop(userInput: string) {
     // Include system prompt in context if it's the first message
     if (context.length === 0) {
@@ -82,6 +81,7 @@ export async function runLoop(userInput: string) {
                 tool_calls: toolCalls
             });
 
+            // Call all tools one by one based on agent reasoning
             for (const call of toolCalls) {
                 const toolName = call.function.name;
                 const toolDescription = toolDefinitions.find(t => t.function.name === toolName)?.function.description;

@@ -21,3 +21,10 @@ export interface AgentToolCall {
         arguments: string;
     };
 }
+
+export interface InspectionEvent {
+    id: number;
+    ts: number;
+    data: string;
+    expanded?: boolean;
+  };

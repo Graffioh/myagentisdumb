@@ -1,36 +1,27 @@
 <script lang="ts">
-  type InspectionEvent = {
-    id: number;
-    ts: number;
-    data: string;
-    expanded?: boolean;
-  };
+  import type { InspectionEvent } from "../../agent/types";
 
   interface Props {
     event: InspectionEvent;
-    onToggleExpand: (event: InspectionEvent) => void;
+    onToggleExpand: (eventId: number) => void;
     onRemove: (eventId: number) => void;
   }
 
   let { event, onToggleExpand, onRemove }: Props = $props();
 
-  function isMultiline(data: string): boolean {
-    return data.includes("\n");
-  }
-
   function getFirstLine(data: string): string {
     return data.split("\n")[0];
   }
 
-  const isExpanded = $derived(event.expanded ?? false);
-  const multiline = $derived(isMultiline(event.data));
+  const isExpanded = $derived(!!event.expanded);
+  const multiline = $derived(event.data.includes("\n"));
 </script>
 
 <div class="row">
   <div class="ts">{new Date(event.ts).toLocaleTimeString()}</div>
   <div class="data-container">
     {#if multiline}
-      <button class="expand-button" onclick={() => onToggleExpand(event)}>
+      <button class="expand-button" onclick={() => onToggleExpand(event.id)}>
         <span class="arrow {isExpanded ? 'expanded' : ''}">▶</span>
       </button>
     {/if}
