@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import { AgentRequest, AgentResponse } from "./types";
 import { Request, Response } from "express";
-import { runLoop, clearContext } from "./loop";
+import { runLoop, clearContext, getContext } from "./loop";
 
 const app = express();
 
@@ -26,6 +26,17 @@ app.post("/api/agent", async (req: Request<AgentRequest>, res: Response<AgentRes
   } catch (error) {
     console.error("[ERROR]", error);
     res.status(500).send("Agent error");
+  }
+});
+
+// Get context endpoint
+app.get("/api/agent/context", async (req: Request, res: Response) => {
+  try {
+    const currentContext = getContext();
+    res.status(200).json(currentContext);
+  } catch (error) {
+    console.error("[ERROR] Failed to get context:", error);
+    res.status(500).send("Failed to get context");
   }
 });
 

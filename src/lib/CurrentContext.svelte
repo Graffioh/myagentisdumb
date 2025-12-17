@@ -34,6 +34,25 @@
     }
   }
 
+  async function refreshContext(e: MouseEvent) {
+    e.stopPropagation();
+    
+    try {
+      const response = await fetch(AGENT_URL + "/agent/context", {
+        method: "GET",
+      });
+      
+      if (response.ok) {
+        const currentContext = await response.json();
+        context = currentContext;
+      } else {
+        console.error("Failed to refresh context");
+      }
+    } catch (error) {
+      console.error("Error refreshing context:", error);
+    }
+  }
+
   onMount(() => {
     contextEventSource = new EventSource(INSPECTION_URL + "/inspection/context");
 
@@ -73,14 +92,24 @@
         >Current Context ({context.length} messages)</span
       >
     </div>
-    <button 
-      class="delete-context-button" 
-      onclick={deleteContext}
-      title="Clear context"
-      aria-label="Clear context"
-    >
-      delete context
-    </button>
+    <div class="context-header-right">
+      <button 
+        class="refresh-context-button" 
+        onclick={refreshContext}
+        title="Refresh context"
+        aria-label="Refresh context"
+      >
+        ↺
+      </button>
+      <button 
+        class="delete-context-button" 
+        onclick={deleteContext}
+        title="Clear context"
+        aria-label="Clear context"
+      >
+        delete context
+      </button>
+    </div>
   </div>
   {#if contextExpanded}
     <div class="context-content">
@@ -131,10 +160,42 @@
     gap: 8px;
   }
 
+  .context-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .context-title {
     font-size: 13px;
     font-weight: 600;
     color: #e6edf3;
+  }
+
+  .refresh-context-button {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: #c9d1d9;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    min-width: 28px;
+  }
+
+  .refresh-context-button:hover {
+    border-color: rgba(88, 166, 255, 0.7);
+    color: #79c0ff;
+    background: rgba(88, 166, 255, 0.1);
+  }
+
+  .refresh-context-button:active {
+    background: rgba(88, 166, 255, 0.2);
   }
 
   .delete-context-button {
