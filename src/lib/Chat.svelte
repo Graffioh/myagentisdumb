@@ -8,8 +8,8 @@
   let chatText = $state("");
   let isSending = $state(false);
 
-  const BACKEND_URL =
-    import.meta.env.VITE_BACKEND_URL || "http://localhost:3002/api";
+  const AGENT_URL =
+    import.meta.env.VITE_AGENT_URL || "http://localhost:3002/api";
 
   function updateChatText() {
     chatText = messages
@@ -28,7 +28,7 @@
     isSending = true;
 
     try {
-      const response = await fetch(BACKEND_URL + "/agent", {
+      const response = await fetch(AGENT_URL + "/agent", {
         method: "POST",
         body: JSON.stringify({ prompt: trimmed }),
         headers: { "Content-Type": "application/json" },

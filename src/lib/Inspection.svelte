@@ -12,8 +12,8 @@
 
   let eventSource: EventSource | null = null;
 
-  const BACKEND_URL =
-    import.meta.env.VITE_BACKEND_URL || "http://localhost:3002/api";
+  const INSPECTION_URL =
+    import.meta.env.VITE_INSPECTION_URL || "http://localhost:3003/api";
 
   function pushEvent(data: string) {
     const next = [
@@ -34,7 +34,7 @@
   }
 
   onMount(() => {
-    eventSource = new EventSource(BACKEND_URL + "/agent/events/inspection");
+    eventSource = new EventSource(INSPECTION_URL + "/inspection/messages");
 
     eventSource.onopen = () => {
       status = "connected";

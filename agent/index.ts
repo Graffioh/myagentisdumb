@@ -4,7 +4,6 @@ import cors from "cors";
 import { AgentRequest, AgentResponse } from "./types";
 import { Request, Response } from "express";
 import { runLoop, clearContext } from "./loop";
-import { clearInspectionClient, setInspectionClient, clearContextClient, setContextClient } from "./sse-client";
 
 const app = express();
 
@@ -30,48 +29,10 @@ app.post("/api/agent", async (req: Request<AgentRequest>, res: Response<AgentRes
   }
 });
 
-// Server sent events (SSE) Inspection events endpoint
-app.get("/api/agent/events/inspection", async (req: Request, res: Response) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  res.flushHeaders();
-
-  setInspectionClient(res);
-
-  res.write("data: Connected to Agent Inspection Channel!\n\n");
-
-  req.on("close", () => {
-    clearInspectionClient();
-    res.end();
-    console.log("Inspection SSE Client disconnected");
-  });
-});
-
-// Server sent events (SSE) Context events endpoint
-app.get("/api/agent/events/context", async (req: Request, res: Response) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  res.flushHeaders();
-
-  setContextClient(res);
-
-  res.write("data: []\n\n");
-
-  req.on("close", () => {
-    clearContextClient();
-    res.end();
-    console.log("Context SSE Client disconnected");
-  });
-});
-
 // Delete context endpoint
 app.delete("/api/agent/context", async (req: Request, res: Response) => {
   try {
-    clearContext();
+    await clearContext();
     res.status(200).json({ message: "Context cleared" });
   } catch (error) {
     console.error("[ERROR] Failed to clear context:", error);

@@ -1,18 +1,18 @@
 import { AgentMessage, AgentToolCall } from "./types";
 import { toolDefinitions, toolImplementations } from "./tools/base";
-import { sendInspectionMessage, sendContextUpdate } from "./sse-client";
+import { sendInspectionMessage, sendContextUpdate } from "../inspection/sse/sse-client";
 
 let context: AgentMessage[] = [];
 
-function updateContext(newMessage: AgentMessage) {
+async function updateContext(newMessage: AgentMessage) {
     context.push(newMessage);
-    sendContextUpdate(context);
+    await sendContextUpdate(context);
 }
 
-export function clearContext() {
+export async function clearContext() {
     context = [];
-    sendContextUpdate(context);
-    sendInspectionMessage("Context cleared");
+    await sendContextUpdate(context);
+    await sendInspectionMessage("Context cleared");
 }
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY!;
@@ -34,15 +34,15 @@ Follow these rules strictly:
 export async function runLoop(userInput: string) {
     // Include system prompt in context if it's the first message
     if (context.length === 0) {
-        updateContext({ role: "system", content: SYSTEM_PROMPT });
+        await updateContext({ role: "system", content: SYSTEM_PROMPT });
     }
     
-    updateContext({ role: "user", content: userInput });
+    await updateContext({ role: "user", content: userInput });
 
     while (true) {
         const messages: AgentMessage[] = [...context];
 
-        sendInspectionMessage(`Agent is thinking...`);
+        await sendInspectionMessage(`Agent is thinking...`);
 
         const response = await fetch(OPENROUTER_API_URL, {
             method: "POST",
@@ -65,17 +65,17 @@ export async function runLoop(userInput: string) {
         }
 
         const data = await response.json();
-        sendInspectionMessage(`Full OpenRouter API response: ${JSON.stringify(data, null, 2)}`);
+        await sendInspectionMessage(`Full OpenRouter API response: ${JSON.stringify(data, null, 2)}`);
 
         const msg = data.choices[0].message;
-        sendInspectionMessage(`Model message: ${JSON.stringify(msg, null, 2)}`);
+        await sendInspectionMessage(`Model message: ${JSON.stringify(msg, null, 2)}`);
 
         const toolCalls: AgentToolCall[] = msg.tool_calls;
 
         if (toolCalls && toolCalls.length > 0) {
-            sendInspectionMessage(`Model decided to use TOOLS: ${toolCalls.map(call => call.function.name).join(", ")}`);
+            await sendInspectionMessage(`Model decided to use TOOLS: ${toolCalls.map(call => call.function.name).join(", ")}`);
 
-            updateContext({
+            await updateContext({
                 role: "assistant",
                 content: "",
                 tool_calls: toolCalls
@@ -87,7 +87,7 @@ export async function runLoop(userInput: string) {
                 const toolDescription = toolDefinitions.find(t => t.function.name === toolName)?.function.description;
                 const args = JSON.parse(call.function.arguments || "{}");
 
-                sendInspectionMessage(`Tool call → ${toolName} \n\n with arguments: ${JSON.stringify(args, null, 2)} \n\n Description: ${toolDescription}`);
+                await sendInspectionMessage(`Tool call → ${toolName} \n\n with arguments: ${JSON.stringify(args, null, 2)} \n\n Description: ${toolDescription}`);
 
                 if (!toolImplementations[toolName]) {
                     throw new Error(`Unknown tool: ${toolName}`);
@@ -95,7 +95,7 @@ export async function runLoop(userInput: string) {
 
                 const result = await toolImplementations[toolName](args);
 
-                updateContext({
+                await updateContext({
                     role: "tool",
                     tool_call_id: call.id,
                     content: JSON.stringify(result),
@@ -106,9 +106,9 @@ export async function runLoop(userInput: string) {
         }
 
         const finalContent = msg.content ? msg.content : `The agent is confused x.x`;
-        sendInspectionMessage(`Final Assistant message: ${finalContent}`);
+        await sendInspectionMessage(`Final Assistant message: ${finalContent}`);
 
-        updateContext({ role: "assistant", content: msg.content });
+        await updateContext({ role: "assistant", content: msg.content });
 
         return finalContent;
     }

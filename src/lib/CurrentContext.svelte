@@ -11,14 +11,16 @@
   let contextExpanded = $state(false);
   let contextEventSource: EventSource | null = null;
 
-  const BACKEND_URL =
-    import.meta.env.VITE_BACKEND_URL || "http://localhost:3002/api";
+  const AGENT_URL =
+    import.meta.env.VITE_AGENT_URL || "http://localhost:3002/api";
+  const INSPECTION_URL =
+    import.meta.env.VITE_INSPECTION_URL || "http://localhost:3003/api";
 
   async function deleteContext(e: MouseEvent) {
     e.stopPropagation(); 
     
     try {
-      const response = await fetch(BACKEND_URL + "/agent/context", {
+      const response = await fetch(AGENT_URL + "/agent/context", {
         method: "DELETE",
       });
       
@@ -33,7 +35,7 @@
   }
 
   onMount(() => {
-    contextEventSource = new EventSource(BACKEND_URL + "/agent/events/context");
+    contextEventSource = new EventSource(INSPECTION_URL + "/inspection/context");
 
     contextEventSource.onmessage = (event: MessageEvent) => {
       try {

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev:frontend": "vite",
-    "dev:agent": "tsx watch agent/index.ts"
+    "dev:agent": "tsx watch agent/index.ts",
+    "dev:inspection": "tsx watch inspection/index.ts"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
