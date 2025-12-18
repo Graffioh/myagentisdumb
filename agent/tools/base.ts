@@ -1,5 +1,6 @@
 import { getWeather } from "./weather";
 import { getMovie } from "./film";
+import { runNeofetch } from "./neofetch";
 
 export const toolDefinitions = [
     {
@@ -35,6 +36,18 @@ export const toolDefinitions = [
           required: ["title"]
         }
       }
+    },
+    {
+      type: "function",
+      function: {
+        name: "runNeofetch",
+        description: "Run the neofetch CLI command to display system information including OS, hostname, kernel, uptime, packages, shell, resolution, and more.",
+        parameters: {
+          type: "object",
+          properties: {},
+          required: []
+        }
+      }
     }
   ];
 
@@ -44,5 +57,8 @@ export const toolImplementations = {
     },
     getMovie: async ({ title }: { title: string }) => {
       return await getMovie(title);
+    },
+    runNeofetch: async () => {
+      return await runNeofetch();
     }
 };
