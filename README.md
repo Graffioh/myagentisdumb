@@ -35,5 +35,6 @@ I will think of a better way for these stuffs...I promise.
 
 <img width="1040" height="339" alt="maid-diagram" src="https://github.com/user-attachments/assets/75fd2936-ee9e-4e28-8907-74df9556b499" />
 
-<img width="1512" height="883" alt="maid-screen" src="https://github.com/user-attachments/assets/b6d35a4d-3160-4ced-849c-a8000b5dd1d7" />
+<img width="1512" height="881" alt="maid-screen" src="https://github.com/user-attachments/assets/15c6ea47-2228-4cd2-a27d-0214f5dfb8f0" />
+
 
