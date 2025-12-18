@@ -2,8 +2,8 @@
     Inspection Wire - Wire with the Inspection HTTP client for sending events to the inspection server.
 */
 
-import { createHttpInspectionReporter } from "../protocol/inspection";
-import type { InspectionReporter } from "../protocol/types";
+import { createHttpInspectionReporter } from "../reporter/inspection";
+import type { InspectionReporter } from "../reporter/types";
 
 export { createHttpInspectionReporter };
 export type { InspectionReporter };

@@ -65,7 +65,6 @@ app.post("/api/inspection/messages", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Message is required" });
     }
 
-    // Broadcast to all connected inspection clients
     const lines = String(message).split(/\r?\n/);
     inspectionClients.forEach((client) => {
       try {
@@ -74,7 +73,6 @@ app.post("/api/inspection/messages", async (req: Request, res: Response) => {
         }
         client.write(`\n`);
       } catch (error) {
-        // Remove dead clients
         inspectionClients = inspectionClients.filter((c) => c !== client);
       }
     });
@@ -95,12 +93,10 @@ app.post("/api/inspection/context", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Context must be an array" });
     }
 
-    // Broadcast to all connected context clients
     contextClients.forEach((client) => {
       try {
         client.write(`data: ${JSON.stringify(context)}\n\n`);
       } catch (error) {
-        // Remove dead clients
         contextClients = contextClients.filter((c) => c !== client);
       }
     });
@@ -136,12 +132,10 @@ app.post("/api/inspection/tokens", async (req: Request, res: Response) => {
   try {
     const usage = req.body;
 
-    // Broadcast to all connected token clients
     tokenClients.forEach((client) => {
       try {
         client.write(`data: ${JSON.stringify(usage)}\n\n`);
       } catch (error) {
-        // Remove dead clients
         tokenClients = tokenClients.filter((c) => c !== client);
       }
     });

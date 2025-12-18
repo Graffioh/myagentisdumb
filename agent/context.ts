@@ -1,4 +1,4 @@
-import type { AgentMessage, TokenUsage } from "../protocol/types";
+import type { AgentMessage, TokenUsage } from "../reporter/types";
 import { inspectionReporter } from "./inspection";
 
 let context: AgentMessage[] = [];

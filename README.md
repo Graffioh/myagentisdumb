@@ -8,7 +8,7 @@
 
 The goal is to make the frontend and inspection backend (SSE) a standalone component/package, where you can plug-in any agent loop you want to debug.
 
-For this purpose, `/protocol` package is used as a bridge between the inspection and the agent. The agent code need to instantiate an `InspectionReporter` so that it can send messages, context and other informations that will be useful during debugging.
+For this purpose, `/reporter` package is used as a bridge between the inspection and the agent. The agent code need to instantiate an `InspectionReporter` so that it can send messages, context and other informations that will be useful during debugging.
 
 <img width="1512" height="883" alt="maid-screen" src="https://github.com/user-attachments/assets/b6d35a4d-3160-4ced-849c-a8000b5dd1d7" />
 

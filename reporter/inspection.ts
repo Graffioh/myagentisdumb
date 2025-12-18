@@ -26,13 +26,13 @@ export function createHttpInspectionReporter(
     baseUrl: string = "http://localhost:3003",
 ): InspectionReporter {
     return {
-        async message(line: string): Promise<void> {
-            console.log("Sending inspection message:", line);
+        async message(msg: string): Promise<void> {
+            console.log("Sending inspection message:", msg);
             try {
                 const response = await fetch(`${baseUrl}/api/inspection/messages`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: line }),
+                    body: JSON.stringify({ message: msg }),
                 });
 
                 if (!response.ok) {

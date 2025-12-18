@@ -1,4 +1,4 @@
-import type { AgentMessage, AgentToolCall, TokenUsage } from "../protocol/types";
+import type { AgentMessage, AgentToolCall, TokenUsage } from "../reporter/types";
 import { toolDefinitions, toolImplementations } from "./tools/base";
 import { inspectionReporter } from "./inspection";
 import {
