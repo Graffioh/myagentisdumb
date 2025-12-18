@@ -1,5 +1,10 @@
 <script lang="ts">
-  import type { InspectionEvent } from "../../reporter/types";
+  type InspectionEvent = {
+    id: number;
+    ts: number;
+    data: string;
+    expanded: boolean;
+  };
 
   interface Props {
     events: InspectionEvent[];

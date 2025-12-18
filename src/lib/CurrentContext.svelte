@@ -1,6 +1,12 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import type { TokenUsage, ContextMessage, AgentToolDefinition } from "../../reporter/types";
+  import type { TokenUsage, AgentToolDefinition } from "../../agent/types";
+
+  type ContextMessage = {
+    role: string;
+    content: string;
+    tool_calls?: unknown[];
+  };
 
   let context: ContextMessage[] = $state([]);
   let tokenUsage: TokenUsage = $state({
@@ -22,13 +28,13 @@
     import.meta.env.VITE_INSPECTION_URL || "http://localhost:3003/api";
 
   async function deleteContext(e: MouseEvent) {
-    e.stopPropagation(); 
-    
+    e.stopPropagation();
+
     try {
       const response = await fetch(AGENT_URL + "/agent/context", {
         method: "DELETE",
       });
-      
+
       if (response.ok) {
         context = [];
       } else {
@@ -41,7 +47,7 @@
 
   async function refreshContext(e: MouseEvent) {
     e.stopPropagation();
-    
+
     try {
       const [contextResponse, tokenResponse] = await Promise.all([
         fetch(AGENT_URL + "/agent/context", {
@@ -51,14 +57,14 @@
           method: "GET",
         }),
       ]);
-      
+
       if (contextResponse.ok) {
         const currentContext = await contextResponse.json();
         context = currentContext;
       } else {
         console.error("Failed to refresh context");
       }
-      
+
       if (tokenResponse.ok) {
         const currentTokenUsage = await tokenResponse.json();
         tokenUsage = currentTokenUsage;
@@ -96,7 +102,9 @@
   }
 
   onMount(() => {
-    contextEventSource = new EventSource(INSPECTION_URL + "/inspection/context");
+    contextEventSource = new EventSource(
+      INSPECTION_URL + "/inspection/context"
+    );
 
     contextEventSource.onmessage = (event: MessageEvent) => {
       try {
@@ -155,20 +163,25 @@
         >Current Context ({context.length} messages)</span
       >
       <span class="token-info">
-        {formatTokens(tokenUsage.contextLimit !== null && tokenUsage.remainingTokens !== null ? tokenUsage.contextLimit - tokenUsage.remainingTokens : null)} / {formatTokens(tokenUsage.contextLimit)} tokens
+        {formatTokens(
+          tokenUsage.contextLimit !== null &&
+            tokenUsage.remainingTokens !== null
+            ? tokenUsage.contextLimit - tokenUsage.remainingTokens
+            : null
+        )} / {formatTokens(tokenUsage.contextLimit)} tokens
       </span>
     </div>
     <div class="context-header-right">
-      <button 
-        class="refresh-context-button" 
+      <button
+        class="refresh-context-button"
         onclick={refreshContext}
         title="Refresh context"
         aria-label="Refresh context"
       >
         ↺
       </button>
-      <button 
-        class="delete-context-button" 
+      <button
+        class="delete-context-button"
         onclick={deleteContext}
         title="Clear context"
         aria-label="Clear context"
@@ -227,7 +240,11 @@
               <div class="tool-definition">
                 <div class="tool-name">{tool.function.name}</div>
                 <div class="tool-description">{tool.function.description}</div>
-                <pre class="tool-params">{JSON.stringify(tool.function.parameters, null, 2)}</pre>
+                <pre class="tool-params">{JSON.stringify(
+                    tool.function.parameters,
+                    null,
+                    2
+                  )}</pre>
               </div>
             {/each}
           {/if}

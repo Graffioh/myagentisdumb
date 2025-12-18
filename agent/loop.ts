@@ -1,6 +1,6 @@
-import type { AgentMessage, AgentToolCall, TokenUsage } from "../reporter/types";
+import type { AgentMessage, AgentToolCall, TokenUsage } from "./types";
 import { toolDefinitions, toolImplementations } from "./tools/base";
-import { inspectionReporter } from "./inspection";
+import { createHttpInspectionReporter } from "../reporter/index";
 import {
     fetchModelContextLimit,
     updateContext,
@@ -9,6 +9,8 @@ import {
     getTokenUsage as getTokenUsageUtil,
     setLastTokenUsage
 } from "./context";
+
+const inspectionReporter = createHttpInspectionReporter();
 
 let currentModel = "openai/gpt-oss-120b";
 

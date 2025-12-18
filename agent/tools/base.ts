@@ -1,7 +1,7 @@
 import { getWeather } from "./weather";
 import { getMovie } from "./film";
 import { runNeofetch } from "./neofetch";
-import type { AgentToolDefinition } from "../../reporter/types";
+import type { AgentToolDefinition } from "../types";
 
 export const toolDefinitions: AgentToolDefinition[] = [
     {

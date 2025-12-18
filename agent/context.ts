@@ -1,5 +1,7 @@
-import type { AgentMessage, TokenUsage } from "../reporter/types";
-import { inspectionReporter } from "./inspection";
+import type { AgentMessage, TokenUsage } from "./types";
+import { createHttpInspectionReporter } from "../reporter/index";
+
+const inspectionReporter = createHttpInspectionReporter();
 
 let context: AgentMessage[] = [];
 let lastTokenUsage: TokenUsage = {
