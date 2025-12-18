@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { InspectionEvent } from "../../protocol/types";
+  import type { InspectionEvent } from "../../reporter/types";
 
   interface Props {
     events: InspectionEvent[];
