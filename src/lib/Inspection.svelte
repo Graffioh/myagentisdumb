@@ -3,13 +3,7 @@
   import DownloadSnapshot from "./DownloadSnapshot.svelte";
   import CurrentContext from "./CurrentContext.svelte";
   import EventRow from "./EventRow.svelte";
-
-  type InspectionEvent = {
-    id: number;
-    ts: number;
-    data: string;
-    expanded: boolean;
-  };
+  import type { InspectionEvent } from "../types";
 
   let events: InspectionEvent[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");

@@ -1,8 +1,7 @@
 <script lang="ts">
   import TextInput from "./TextInput.svelte";
   import TextArea from "./TextArea.svelte";
-
-  type ChatMessage = { role: "user" | "assistant"; content: string };
+  import type { ChatMessage } from "../types";
 
   let messages: ChatMessage[] = $state([]);
   let chatText = $state("");

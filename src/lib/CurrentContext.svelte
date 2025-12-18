@@ -1,12 +1,11 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import type { TokenUsage, AgentToolDefinition } from "../../agent/types";
-
-  type ContextMessage = {
-    role: string;
-    content: string;
-    tool_calls?: unknown[];
-  };
+  import type {
+    JSONSchema,
+    AgentToolDefinition,
+    TokenUsage,
+    ContextMessage,
+  } from "../types";
 
   let context: ContextMessage[] = $state([]);
   let tokenUsage: TokenUsage = $state({

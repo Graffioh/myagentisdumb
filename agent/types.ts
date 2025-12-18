@@ -23,11 +23,11 @@ export type AgentMessage = {
 };
 
 export type JSONSchema = {
-    type: "object" | "string" | "number" | "boolean" | "array";
-    properties?: Record<string, JSONSchema>;
-    required?: string[];
-    description?: string;
-    items?: JSONSchema;
+  type: "object" | "string" | "number" | "boolean" | "array";
+  properties?: Record<string, JSONSchema>;
+  required?: string[];
+  description?: string;
+  items?: JSONSchema;
 };
 
 export type AgentToolDefinition = {
