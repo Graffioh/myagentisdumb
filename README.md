@@ -5,9 +5,11 @@
        src="https://github.com/user-attachments/assets/2c52da38-c4e0-4221-aee5-93d7e4ed5f7d" />
 </p>
 
+This is essentially a dev tool to inspect your agent behavior via messages, context, token usage and tools.
+
 *(Under development)*
 
-The goal is to make the frontend and inspection backend (SSE) a standalone component/package, where you can plug-in any agent loop you want to debug.
+The goal is to make the frontend and inspection backend (SSE) a standalone component/package, where you can plug-in any agent loop you want to inspect/debug.
 
 ## Usage
 
