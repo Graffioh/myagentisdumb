@@ -1,15 +1,31 @@
 <script lang="ts">
   import Chat from "./lib/Chat.svelte";
   import Inspection from "./lib/Inspection.svelte";
+
+  let chatOpen = $state(true);
+
+  function toggleChat() {
+    chatOpen = !chatOpen;
+  }
 </script>
 
 <main>
   <div id="panels">
-    <div id="panel1">
+    <div id="panel-inspection" class={chatOpen ? "" : "expanded"}>
       <Inspection />
     </div>
-    <div id="panel2">
-      <Chat />
+    <button
+      class="chat-toggle"
+      onclick={toggleChat}
+      aria-label={chatOpen ? "Collapse chat panel" : "Expand chat panel"}
+      aria-expanded={chatOpen}
+    >
+      <span class="arrow {chatOpen ? '' : 'collapsed'}">▶</span>
+    </button>
+    <div id="panel-chat" class={chatOpen ? "" : "collapsed"}>
+      <div id="chat-content" class={chatOpen ? "" : "hidden"}>
+        <Chat />
+      </div>
     </div>
   </div>
 </main>
@@ -22,16 +38,84 @@
   #panels {
     display: flex;
     flex-direction: row;
-    gap: 10px;
+    gap: 0;
     width: 100%;
     height: 100%;
+    align-items: stretch;
   }
 
-  #panel1 {
+  #panel-inspection {
     width: 50%;
+    transition: width 0.3s ease;
+    flex-shrink: 0;
   }
 
-  #panel2 {
+  #panel-inspection.expanded {
+    width: calc(100% - 50px);
+  }
+
+  #panel-chat {
     width: 50%;
+    transition: width 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  #panel-chat.collapsed {
+    width: 0;
+    overflow: hidden;
+  }
+
+  #chat-content {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    height: 100%;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: rgb(0, 0, 0);
+    box-sizing: border-box;
+  }
+
+  #chat-content.hidden {
+    display: none;
+  }
+
+  .chat-toggle {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0;
+    color: rgba(230, 237, 243, 0.65);
+    cursor: pointer;
+    padding: 8px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    width: 40px;
+    height: 100%;
+    z-index: 10;
+  }
+
+  .chat-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e6edf3;
+    border-color: rgba(88, 166, 255, 0.5);
+  }
+
+  .chat-toggle:active {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .arrow {
+    font-size: 12px;
+    transition: transform 0.3s ease;
+    display: inline-block;
+  }
+
+  .arrow.collapsed {
+    transform: rotate(180deg);
   }
 </style>
