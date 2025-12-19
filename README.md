@@ -33,6 +33,7 @@ When you send SSE events to the inspector to be displayed in the Agent inspectio
 
 - `message` ➜ (message: string)
 - `tokens` ➜ (currentUsage: number, maxTokens: number)
+- `model` ➜ (modelName: string)
 
 ##### More structured
 

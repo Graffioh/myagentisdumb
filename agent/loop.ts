@@ -45,6 +45,7 @@ Follow these rules strictly:
 
 export async function runLoop(userInput: string) {
     await inspectionReporter.tools(toolDefinitions);
+    await inspectionReporter.model(currentModel);
 
     // Include system prompt in context if it's the first message
     const startContext = getContext();

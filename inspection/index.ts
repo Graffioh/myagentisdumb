@@ -18,9 +18,12 @@ let inspectionClients: Response[] = [];
 let contextClients: Response[] = [];
 let tokenClients: Response[] = [];
 let toolClients: Response[] = [];
+let modelClients: Response[] = [];
 
 // Store tool definitions
 let toolDefinitions: unknown[] = [];
+// Store model name
+let currentModel: string = "";
 
 // Server sent events (SSE) Inspection events endpoint
 app.get("/api/inspection/messages", async (req: Request, res: Response) => {
@@ -199,6 +202,51 @@ app.post("/api/inspection/tools", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("[ERROR] Failed to store tool definitions:", error);
     res.status(500).json({ error: "Failed to store tool definitions" });
+  }
+});
+
+// Server sent events (SSE) Model name endpoint
+app.get("/api/inspection/model", async (req: Request, res: Response) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  res.flushHeaders();
+
+  modelClients.push(res);
+
+  res.write(`data: ${JSON.stringify({ model: currentModel })}\n\n`);
+
+  req.on("close", () => {
+    modelClients = modelClients.filter((client) => client !== res);
+    res.end();
+    console.log("Model SSE Client disconnected");
+  });
+});
+
+// HTTP endpoint for agent to send model name updates
+app.post("/api/inspection/model", async (req: Request, res: Response) => {
+  try {
+    const { model } = req.body;
+    
+    if (typeof model !== "string") {
+      return res.status(400).json({ error: "Model must be a string" });
+    }
+
+    currentModel = model;
+
+    modelClients.forEach((client) => {
+      try {
+        client.write(`data: ${JSON.stringify({ model: currentModel })}\n\n`);
+      } catch (error) {
+        modelClients = modelClients.filter((c) => c !== client);
+      }
+    });
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("[ERROR] Failed to send model name update:", error);
+    res.status(500).json({ error: "Failed to send model name update" });
   }
 });
 

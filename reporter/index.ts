@@ -20,6 +20,7 @@ type InspectionReporter = {
     context: (ctx: unknown[]) => Promise<void>;
     tokens: (currentUsage: number, maxTokens: number | null) => Promise<void>;
     tools: (toolDefinitions: unknown[]) => Promise<void>;
+    model: (modelName: string) => Promise<void>;
 };
 
 /**
@@ -94,6 +95,22 @@ export function createHttpInspectionReporter(
                 }
             } catch (error) {
                 console.error("Error sending tool definitions:", error);
+            }
+        },
+
+        async model(modelName: string): Promise<void> {
+            try {
+                const response = await fetch(`${baseUrl}/api/inspection/model`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ model: modelName }),
+                });
+
+                if (!response.ok) {
+                    console.error(`Failed to send model name: ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error("Error sending model name:", error);
             }
         },
     };

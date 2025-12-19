@@ -56,7 +56,7 @@ export async function clearContext(currentModel: string) {
         remainingTokens: null,
     };
     lastTokenUsage = resetTokenUsage;
-    await inspectionReporter.tokens(resetTokenUsage);
+    await inspectionReporter.tokens(resetTokenUsage.totalTokens, resetTokenUsage.contextLimit);
 }
 
 export function getContext(): AgentMessage[] {

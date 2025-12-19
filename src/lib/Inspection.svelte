@@ -9,8 +9,10 @@
   let status = $state<"connecting" | "connected" | "error">("connecting");
   let lastError = $state<string | null>(null);
   let eventId = $state(0);
+  let modelName = $state<string>("");
 
   let eventSource: EventSource | null = null;
+  let modelEventSource: EventSource | null = null;
 
   const INSPECTION_URL =
     import.meta.env.VITE_INSPECTION_URL || "http://localhost:3003/api";
@@ -49,11 +51,30 @@
       status = "error";
       lastError = "SSE connection error";
     };
+
+    modelEventSource = new EventSource(INSPECTION_URL + "/inspection/model");
+
+    modelEventSource.onmessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.model !== undefined) {
+          modelName = data.model;
+        }
+      } catch (e) {
+        console.error("Failed to parse model data:", e);
+      }
+    };
+
+    modelEventSource.onerror = () => {
+      console.error("Model SSE connection error");
+    };
   });
 
   onDestroy(() => {
     eventSource?.close();
     eventSource = null;
+    modelEventSource?.close();
+    modelEventSource = null;
   });
 </script>
 
@@ -61,7 +82,7 @@
   <div class="header">
     <div class="title-section">
       <div class="title">Agent inspection</div>
-      <div class="model">openai/gpt-oss-120b</div>
+      <div class="model">{modelName || "no model name available"}</div>
     </div>
     <div class="header-right-half">
       <DownloadSnapshot {events} />
