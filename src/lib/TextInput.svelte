@@ -54,8 +54,8 @@
   button {
     align-self: flex-end;
     padding: 6px 16px;
-    background: #238636;
-    color: white;
+    background: #fbce51;
+    color: #000000;
     border: none;
     border-radius: 6px;
     font-weight: 600;
@@ -64,6 +64,6 @@
   }
 
   button:hover {
-    background: #2ea043;
+    background: #ffe046ca;
   }
 </style>

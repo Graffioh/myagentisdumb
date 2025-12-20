@@ -77,7 +77,7 @@
   }
 
   .chat-toggle {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgb(0, 0, 0);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-left: 1px solid rgba(255, 255, 255, 0.12);
     border-right: 1px solid rgba(255, 255, 255, 0.12);
@@ -96,7 +96,7 @@
   }
 
   .chat-toggle:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(45, 45, 45, 0.892);
     color: #e6edf3;
     border-color: rgba(88, 166, 255, 0.5);
   }
