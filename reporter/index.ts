@@ -9,7 +9,7 @@
  * import { createHttpInspectionReporter } from "@you/protocol";
  *
  * const reporter = createHttpInspectionReporter("http://localhost:3003");
- * await reporter.message("Agent is thinking...");
+ * await reporter.message("Agent is processing...");
  * await reporter.context(messages);
  * await reporter.tokens(currentUsage, maxTokens);
  * ```

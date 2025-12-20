@@ -59,7 +59,7 @@ export async function runLoop(userInput: string) {
         const currentContext = getContext();
         const messages: AgentMessage[] = currentContext;
 
-        await inspectionReporter.message(`Agent is thinking...`);
+        await inspectionReporter.message(`Agent is processing the user input...`);
 
         const response = await fetch(OPENROUTER_API_URL, {
             method: "POST",
