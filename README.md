@@ -9,7 +9,7 @@ This is essentially a dev tool to inspect your agent behavior via messages, cont
 
 *(Under development)*
 
-The goal is to make the frontend and inspection backend (SSE) a standalone component/package, where you can plug-in any agent loop you want to inspect/debug.
+The goal is to make the frontend and inspection backend (SSE) a standalone component/package used as a Dev tool, where you can plug-in any agent loop you want to inspect/debug.
 
 ## Usage
 
@@ -20,6 +20,7 @@ The goal is to make the frontend and inspection backend (SSE) a standalone compo
 - Open the UI:
   - `http://localhost:5173`
 - Connect your own agent 
+  - or if you want to understand how the dev tool works, spin up the one in `/agent`
 
 ### Running your own agent
 
@@ -36,17 +37,26 @@ When you send SSE events to the inspector to be displayed in the Agent inspectio
 ##### Less structured
 
 - `message` ➜ (message: string)
-- `tokens` ➜ (currentUsage: number, maxTokens: number)
+- `tokens` ➜ (currentTokensUsage: number, modelContextLimit: number) 
 - `model` ➜ (modelName: string)
 
 ##### More structured
 
 - `context` ➜ (ctx: ContextMessage[])
   ```ts
+  type AgentToolCall = {
+      id: string;
+      type: "function";
+      function: {
+          name: string;
+          arguments: string;
+      };
+  };
+
   type ContextMessage = {
     role: string; // system, user, assistant
     content: string; 
-    tool_calls?: unknown[]; // (optional)
+    tool_calls?: AgentToolCall[]; 
   };
   ```
 - `tools` ➜ (tools: AgentToolDefinition[])
@@ -90,7 +100,6 @@ I will think of a better way for these stuffs...I promise.
 <img width="1512" height="881" alt="maid-screen" src="https://github.com/user-attachments/assets/97e0ab8b-972d-4e63-84e9-14a43cbd9029" />
 
 ### Demo
-
 
 https://github.com/user-attachments/assets/440969ef-31b1-46b5-ad8b-85e0ba0d3c1f
 
