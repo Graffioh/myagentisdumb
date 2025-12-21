@@ -79,11 +79,22 @@ I will think of a better way for these stuffs...I promise.
 - Start the **inspection backend**: npm run dev:inspection
 - (Optional) Start the **agent**: npm run dev:agent
 
-## Arch & Design
+## Artifacts
+
+### Architecture
 
 <img width="1040" height="339" alt="maid-diagram" src="https://github.com/user-attachments/assets/75fd2936-ee9e-4e28-8907-74df9556b499" />
 
+### Visual
+
 <img width="1512" height="881" alt="maid-screen" src="https://github.com/user-attachments/assets/97e0ab8b-972d-4e63-84e9-14a43cbd9029" />
+
+### Demo
+
+
+https://github.com/user-attachments/assets/440969ef-31b1-46b5-ad8b-85e0ba0d3c1f
+
+
 
 
 
