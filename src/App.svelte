@@ -1,6 +1,6 @@
 <script lang="ts">
   import Chat from "./lib/Chat.svelte";
-  import Inspection from "./lib/Inspection.svelte";
+  import InspectionPanel from "./lib/InspectionPanel.svelte";
 
   let chatOpen = $state(true);
 
@@ -12,7 +12,7 @@
 <main>
   <div id="panels">
     <div id="panel-inspection">
-      <Inspection />
+      <InspectionPanel />
     </div>
     <button
       class="chat-toggle"
