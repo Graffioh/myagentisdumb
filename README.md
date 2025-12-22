@@ -22,7 +22,13 @@ The goal is to make the frontend and inspection backend (SSE) a standalone compo
 - Connect your own agent 
   - or if you want to understand how the dev tool works, spin up the one in `/agent`
 
-### Running your own agent
+### Without Docker
+
+- Start the **frontend**: npm run dev:frontend
+- Start the **inspection backend**: npm run dev:inspection
+- (Optional) Start the **agent**: npm run dev:agent
+
+## Running your own agent
 
 Before starting your own agent loop, a client that calls inspection backend needs to be instantiated.
 
@@ -30,11 +36,11 @@ If you want (and use typescript for the agent), you can import/copy `InspectorRe
 
 If you don't use typescript, just adapt the code based on your programming language of choice.
 
-#### What to pass to the inspector for reporting
+### What to pass to the inspector for reporting
 
 When you send SSE events to the inspector to be displayed in the Agent inspection panel you must send specific constrained informations (if you don't customize the frontend):
 
-##### Trace
+#### Trace
 
 You can send structured trace events with reasoning details using the `trace()` method:
 
@@ -58,7 +64,7 @@ The `trace()` method sends events with a parent/child structure that will be dis
 
 If it doesn't contain a parent / children structure, it will be displayed as plain text.
 
-##### Others
+#### Others
 
 - `tokens` ➜ (currentTokensUsage: number, modelContextLimit: number) 
 - `model` ➜ (modelName: string)
@@ -68,12 +74,6 @@ If it doesn't contain a parent / children structure, it will be displayed as pla
 All protocol types are available in `protocol/types.ts`.
 
 You can check the agent implementation in `/agent` and `/reporter` as a reference. 
-
-### Without Docker
-
-- Start the **frontend**: npm run dev:frontend
-- Start the **inspection backend**: npm run dev:inspection
-- (Optional) Start the **agent**: npm run dev:agent
 
 ## Artifacts
 
