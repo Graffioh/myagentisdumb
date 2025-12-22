@@ -84,6 +84,7 @@ export async function runLoop(userInput: string) {
         }
 
         const data = await response.json();
+        
         await inspectionReporter.trace(`Full OpenRouter API response: ${JSON.stringify(data, null, 2)}`);
 
         // Extract and send token usage
@@ -101,6 +102,7 @@ export async function runLoop(userInput: string) {
         }
 
         const msg = data.choices[0].message;
+
         await inspectionReporter.trace(`Model message: ${JSON.stringify(msg, null, 2)}`);
 
         const { tool_calls: toolCalls, reasoning } = msg;
@@ -138,7 +140,19 @@ export async function runLoop(userInput: string) {
                     throw new Error(`Unknown tool: ${toolName}`);
                 }
 
+                const startTime = performance.now();
                 const result = await toolImplementations[toolName](args);
+                const endTime = performance.now();
+                const durationMs = endTime - startTime;
+
+                // Report tool execution with timing
+                await inspectionReporter.trace(
+                    `Tool ${toolName} executed`,
+                    [
+                        { label: InspectionEventLabel.Timing, data: `${durationMs.toFixed(2)}ms` },
+                        { label: InspectionEventLabel.ToolCalls, data: JSON.stringify({ tool: toolName, args, result }, null, 2) }
+                    ]
+                );
 
                 await updateContext({
                     role: "tool",
@@ -150,7 +164,7 @@ export async function runLoop(userInput: string) {
             continue;
         }
 
-        const finalContent = msg.content ? msg.content : `The agent is confused x.x`;
+        const finalContent = msg.content ? msg.content : `The agent is confused (ᗒᗣᗕ)`;
         
         // Emit structured event with reasoning if present
         if (reasoning) {

@@ -20,6 +20,12 @@
   const hasReasoning = $derived(
     hasChildren && event.inspectionEvent.children?.some((child) => child.label === InspectionEventLabel.Reasoning)
   );
+  const hasTiming = $derived(
+    hasChildren && event.inspectionEvent.children?.some((child) => child.label === InspectionEventLabel.Timing)
+  );
+  const timingData = $derived(
+    event.inspectionEvent.children?.find((child) => child.label === InspectionEventLabel.Timing)?.data || null
+  );
 </script>
 
 <div class="row">
@@ -38,12 +44,15 @@
         {#if hasReasoning}
           <span class="reasoning-badge" title="Contains reasoning details">R</span>
         {/if}
+        {#if hasTiming && timingData}
+          <span class="timing-badge" title="Tool execution time">{timingData}</span>
+        {/if}
       </div>
       {#if isExpanded && hasChildren}
         <div class="children {hasReasoning ? 'has-reasoning' : ''}">
           {#each event.inspectionEvent.children as child}
             <div class="child">
-              <div class="child-label {child.label === InspectionEventLabel.Reasoning ? 'reasoning-label' : ''}">{child.label}</div>
+              <div class="child-label {child.label === InspectionEventLabel.Reasoning ? 'reasoning-label' : child.label === InspectionEventLabel.Timing ? 'timing-label' : ''}">{child.label}</div>
               <pre class="child-data">{child.data}</pre>
             </div>
           {/each}
@@ -146,6 +155,21 @@
     cursor: help;
   }
 
+  .timing-badge {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(46, 160, 67, 0.15);
+    color: #7ee787;
+    border: 1px solid rgba(46, 160, 67, 0.3);
+    line-height: 1;
+    margin-top: 2px;
+    cursor: help;
+    font-family: monospace;
+  }
+
   .children {
     margin-top: 8px;
     padding-left: 12px;
@@ -175,6 +199,10 @@
 
   .child-label.reasoning-label {
     color: #ff9500;
+  }
+
+  .child-label.timing-label {
+    color: #7ee787;
   }
 
   .child-data {

@@ -36,9 +36,11 @@ If you don't use typescript, just adapt the code based on your programming langu
 
 ### What to pass to the inspector for reporting
 
-When you send SSE events to the inspector to be displayed in the Agent inspection panel you must send specific constrained informations (if you don't customize the frontend):
+When you send SSE events to the inspector to be displayed in the Agent inspection panel you must send specific constrained informations (if you don't customize the frontend)
 
-#### Trace
+Below are some examples:
+
+#### Reasoning Trace
 
 You can send structured trace events with reasoning details using the `trace()` method:
 
@@ -61,6 +63,23 @@ await reporter.trace(
 The `trace()` method sends events with a parent/child structure that will be displayed with expandable reasoning details in the UI. The reasoning label will be highlighted in orange to distinguish it from other content (if provided).
 
 If it doesn't contain a parent / children structure, it will be displayed as plain text.
+
+#### Execution timing for tools
+
+```ts
+  const startTime = performance.now();
+  const endTime = performance.now();
+  const durationMs = endTime - startTime;
+
+  // Report tool execution with timing
+  await inspectionReporter.trace(
+      `Tool ${toolName} executed`,
+      [
+          { label: InspectionEventLabel.Timing, data: `${durationMs.toFixed(2)}ms` },
+          { label: InspectionEventLabel.ToolCalls, data: JSON.stringify({ tool: toolName, args, result }, null, 2) }
+      ]
+  );
+```
 
 #### Others
 
