@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import type { AgentToolDefinition, ContextMessage } from "../../protocol/types";
+  import type {
+    AgentToolDefinition,
+    ContextMessage,
+  } from "../../protocol/types";
   import type { TokenUsage } from "../types";
 
   let context: ContextMessage[] = $state([]);

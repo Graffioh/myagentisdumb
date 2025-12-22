@@ -29,11 +29,7 @@
     <div class="empty">No inspection events yet.</div>
   {:else}
     {#each events as e (e.id)}
-      <EventRow
-        event={e}
-        {onToggleExpand}
-        {onRemove}
-      />
+      <EventRow event={e} {onToggleExpand} {onRemove} />
     {/each}
   {/if}
 </div>
@@ -50,4 +46,3 @@
     font-size: 13px;
   }
 </style>
-

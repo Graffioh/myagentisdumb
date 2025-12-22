@@ -15,16 +15,27 @@
   }
 
   const isExpanded = $derived(!!event.expanded);
-  const hasChildren = $derived(!!event.inspectionEvent.children && event.inspectionEvent.children.length > 0);
+  const hasChildren = $derived(
+    !!event.inspectionEvent.children &&
+      event.inspectionEvent.children.length > 0
+  );
   const multiline = $derived(event.data.includes("\n") || hasChildren);
   const hasReasoning = $derived(
-    hasChildren && event.inspectionEvent.children?.some((child) => child.label === InspectionEventLabel.Reasoning)
+    hasChildren &&
+      event.inspectionEvent.children?.some(
+        (child) => child.label === InspectionEventLabel.Reasoning
+      )
   );
   const hasTiming = $derived(
-    hasChildren && event.inspectionEvent.children?.some((child) => child.label === InspectionEventLabel.Timing)
+    hasChildren &&
+      event.inspectionEvent.children?.some(
+        (child) => child.label === InspectionEventLabel.Timing
+      )
   );
   const timingData = $derived(
-    event.inspectionEvent.children?.find((child) => child.label === InspectionEventLabel.Timing)?.data || null
+    event.inspectionEvent.children?.find(
+      (child) => child.label === InspectionEventLabel.Timing
+    )?.data || null
   );
 </script>
 
@@ -38,21 +49,35 @@
     {/if}
     <div class="data-content">
       <div class="data-with-badge">
-        <pre class="data {isExpanded ? '' : 'collapsed'}">{isExpanded || !multiline
+        <pre class="data {isExpanded ? '' : 'collapsed'}">{isExpanded ||
+          !multiline
             ? event.data
             : getFirstLine(event.data)}</pre>
         {#if hasReasoning}
-          <span class="reasoning-badge" title="Contains reasoning details">R</span>
+          <span class="reasoning-badge" title="Contains reasoning details"
+            >R</span
+          >
         {/if}
         {#if hasTiming && timingData}
-          <span class="timing-badge" title="Tool execution time">{timingData}</span>
+          <span class="timing-badge" title="Tool execution time"
+            >{timingData}</span
+          >
         {/if}
       </div>
       {#if isExpanded && hasChildren}
         <div class="children {hasReasoning ? 'has-reasoning' : ''}">
           {#each event.inspectionEvent.children as child}
             <div class="child">
-              <div class="child-label {child.label === InspectionEventLabel.Reasoning ? 'reasoning-label' : child.label === InspectionEventLabel.Timing ? 'timing-label' : ''}">{child.label}</div>
+              <div
+                class="child-label {child.label ===
+                InspectionEventLabel.Reasoning
+                  ? 'reasoning-label'
+                  : child.label === InspectionEventLabel.Timing
+                    ? 'timing-label'
+                    : ''}"
+              >
+                {child.label}
+              </div>
               <pre class="child-data">{child.data}</pre>
             </div>
           {/each}
