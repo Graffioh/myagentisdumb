@@ -1,3 +1,3 @@
-# maid Inspection package
+# maid Inspection server
 
-this is the inspection package used to manage events to inspect the agent behavior.
+ Manage events to inspect the agent behavior via SSE relay server.

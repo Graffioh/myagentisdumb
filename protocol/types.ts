@@ -7,8 +7,29 @@
  * - Frontend UI
  */
 
+
 /**
- * Minimal tool call structure compatible with OpenAI/OpenRouter format
+ * Tool definitions
+ */
+export type JSONSchema = {
+  type: "object" | "string" | "number" | "boolean" | "array";
+  properties?: Record<string, JSONSchema>;
+  required?: string[];
+  description?: string;
+  items?: JSONSchema;
+};
+
+export type AgentToolDefinition = {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: JSONSchema;
+  };
+};
+
+/**
+ * Tool call (compatible with OpenAI/OpenRouter format)
  */
 export type AgentToolCall = {
   id: string;
@@ -20,7 +41,7 @@ export type AgentToolCall = {
 };
 
 /**
- * Context message - what gets sent to/from the LLM
+ * Context message (what gets sent to/from the LLM)
  * Note: reasoning is NOT included here as it's inspection-only
  */
 export type ContextMessage = {
@@ -30,9 +51,10 @@ export type ContextMessage = {
 };
 
 /**
- * Important labels for inspection event children
- * These are standardized labels used by the frontend for special handling
- * All labels MUST use this enum - no arbitrary strings allowed
+ * Inspection event (with structured format for inspection messages)
+ * Parent event uses message (string), children use label (InspectionEventLabel enum).
+ * If children is present, it's a trace event with structured children.
+ * If children is absent, it's a log event with just a message.
  */
 export enum InspectionEventLabel {
   Content = "Content",
@@ -41,46 +63,14 @@ export enum InspectionEventLabel {
   Custom = "Custom",
 }
 
-/**
- * Child data for structured inspection events
- */
 export type InspectionEventChild = {
   label: InspectionEventLabel;
   data: string;
 };
 
-/**
- * Inspection event - structured format for inspection messages
- * Parent event uses message (string), children use label (InspectionEventLabel enum).
- * If children is present, it's a trace event with structured children.
- * If children is absent, it's a log event with just a message.
- */
 export type InspectionEvent = {
   message: string;
   children?: InspectionEventChild[];
-};
-
-/**
- * JSON Schema for tool definitions
- */
-export type JSONSchema = {
-  type: "object" | "string" | "number" | "boolean" | "array";
-  properties?: Record<string, JSONSchema>;
-  required?: string[];
-  description?: string;
-  items?: JSONSchema;
-};
-
-/**
- * Agent tool definition (OpenAI/OpenRouter compatible)
- */
-export type AgentToolDefinition = {
-  type: "function";
-  function: {
-    name: string;
-    description: string;
-    parameters: JSONSchema;
-  };
 };
 
 /**
