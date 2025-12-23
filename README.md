@@ -120,7 +120,7 @@ You can check the agent implementation in `/dummy-agent` and `/reporter` as a re
 
 ### Visual
 
-<img width="1512" height="879" alt="new-maid-screen" src="https://github.com/user-attachments/assets/1169c632-90e6-4b02-a84a-4fc6f0438d36" />
+<img width="1512" height="881" alt="Screenshot 2025-12-23 at 14 12 19" src="https://github.com/user-attachments/assets/75a13c88-3ee3-4518-8d39-e3df25395fd7" />
 
 ### Demo
 
