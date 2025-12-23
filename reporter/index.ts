@@ -31,8 +31,8 @@ type InspectionReporter = {
     tokens: (currentUsage: number, maxTokens: number | null) => Promise<void>;
     tools: (toolDefinitions: AgentToolDefinition[]) => Promise<void>;
     model: (modelName: string) => Promise<void>;
-    latencyLoopStart: (message?: string) => Promise<void>;
-    latencyLoopEnd: (message?: string) => Promise<void>;
+    latencyStart: (message?: string) => Promise<void>;
+    latencyEnd: (message?: string) => Promise<void>;
 };
 
 /**
@@ -130,11 +130,11 @@ export function createHttpInspectionReporter(
             }
         },
 
-        async latencyLoopStart(message: string = "Latency loop started"): Promise<void> {
+        async latencyStart(message: string = "Latency started"): Promise<void> {
             try {
                 const event: InspectionEvent = {
                     message,
-                    children: [{ label: InspectionEventLabel.LatencyLoopStart, data: "" }]
+                    children: [{ label: InspectionEventLabel.LatencyStart, data: "" }]
                 };
                 const response = await fetch(`${baseUrl}/api/inspection/trace`, {
                     method: "POST",
@@ -143,18 +143,18 @@ export function createHttpInspectionReporter(
                 });
 
                 if (!response.ok) {
-                    console.error(`Failed to send latency loop start: ${response.statusText}`);
+                    console.error(`Failed to send latency start: ${response.statusText}`);
                 }
             } catch (error) {
-                console.error("Error sending latency loop start:", error);
+                console.error("Error sending latency start:", error);
             }
         },
 
-        async latencyLoopEnd(message: string = "Latency loop ended"): Promise<void> {
+        async latencyEnd(message: string = "Latency ended"): Promise<void> {
             try {
                 const event: InspectionEvent = {
                     message,
-                    children: [{ label: InspectionEventLabel.LatencyLoopEnd, data: "" }]
+                    children: [{ label: InspectionEventLabel.LatencyEnd, data: "" }]
                 };
                 const response = await fetch(`${baseUrl}/api/inspection/trace`, {
                     method: "POST",
@@ -163,10 +163,10 @@ export function createHttpInspectionReporter(
                 });
 
                 if (!response.ok) {
-                    console.error(`Failed to send latency loop end: ${response.statusText}`);
+                    console.error(`Failed to send latency end: ${response.statusText}`);
                 }
             } catch (error) {
-                console.error("Error sending latency loop end:", error);
+                console.error("Error sending latency end:", error);
             }
         },
     };

@@ -91,12 +91,12 @@ import { createHttpInspectionReporter } from "./reporter";
 const reporter = createHttpInspectionReporter();
 
 // At the start of processing a user message/request
-await reporter.latencyLoopStart("Agent is processing the user input...");
+await reporter.latencyStart("Agent is processing the user input...");
 
 // ... your agent logic, traces, tool calls ...
 
 // At the end of the loop (when response is complete)
-await reporter.latencyLoopEnd("Loop completed");
+await reporter.latencyEnd("Loop completed");
 ```
 
 The heatmap will only be displayed when loop markers are present. Each bar represents the latency (time difference) between consecutive events within the loop. The first event of each loop has latency 0. Clicking on a bar highlights the corresponding event in the inspection stream.

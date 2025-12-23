@@ -58,7 +58,7 @@ export async function runLoop(userInput: string) {
     await updateContext({ role: "user", content: userInput });
 
     // Mark the start of the agent loop (enables latency heatmap)
-    await inspectionReporter.latencyLoopStart("Agent is processing the user input...");
+    await inspectionReporter.latencyStart("Agent is processing the user input...");
 
     while (true) {
         const currentContext = getContext();
@@ -186,7 +186,7 @@ export async function runLoop(userInput: string) {
         });
 
         // Mark the end of the agent loop (enables latency heatmap)
-        await inspectionReporter.latencyLoopEnd("Latency loop completed");
+        await inspectionReporter.latencyEnd("Latency completed");
 
         return finalContent;
     }

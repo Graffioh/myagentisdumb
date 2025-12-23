@@ -9,22 +9,22 @@ function hasLabel(event: InspectionEventDisplay, label: InspectionEventLabel): b
 }
 
 /**
- * Checks if any events have latency loop markers (LatencyLoopStart or LatencyLoopEnd).
- * The heatmap should only be displayed if loop markers are present.
+ * Checks if any events have latency markers (LatencyStart or LatencyEnd).
+ * The heatmap should only be displayed if latency markers are present.
  */
 export function hasLoopMarkers(events: InspectionEventDisplay[]): boolean {
   return events.some(event => 
-    hasLabel(event, InspectionEventLabel.LatencyLoopStart) || 
-    hasLabel(event, InspectionEventLabel.LatencyLoopEnd)
+    hasLabel(event, InspectionEventLabel.LatencyStart) || 
+    hasLabel(event, InspectionEventLabel.LatencyEnd)
   );
 }
 
 /**
  * Computes latency (time difference) between consecutive events within each loop.
- * A new loop starts when an event has the LatencyLoopStart label.
+ * A new loop starts when an event has the LatencyStart label.
  * First event of each loop has latency 0.
  * 
- * Requires loop markers to be set via reporter.latencyLoopStart() and reporter.latencyLoopEnd().
+ * Requires latency markers to be set via reporter.latencyStart() and reporter.latencyEnd().
  */
 export function computeLatencies(events: InspectionEventDisplay[]): number[] {
   if (events.length === 0) return [];
@@ -34,7 +34,7 @@ export function computeLatencies(events: InspectionEventDisplay[]): number[] {
   for (let i = 0; i < events.length; i++) {
     const event = events[i];
     const prevEvent = i > 0 ? events[i - 1] : null;
-    const isLoopStart = hasLabel(event, InspectionEventLabel.LatencyLoopStart);
+    const isLoopStart = hasLabel(event, InspectionEventLabel.LatencyStart);
 
     if (isLoopStart || !prevEvent) {
       // First event of a new loop (or very first event) has latency 0

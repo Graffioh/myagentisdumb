@@ -73,8 +73,8 @@ export enum InspectionEventLabel {
   ToolCalls = "Tool Calls",
   Timing = "Timing",
   Custom = "Custom",
-  LatencyLoopStart = "__LATENCY_LOOP_START__",
-  LatencyLoopEnd = "__LATENCY_LOOP_END__",
+  LatencyStart = "__LATENCY_START__",
+  LatencyEnd = "__LATENCY_END__",
 }
 
 export type InspectionEventChild = {
