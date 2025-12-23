@@ -5,7 +5,6 @@
     ContextMessage,
   } from "../../protocol/types";
   import type { TokenUsage } from "../types";
-  import { load, save } from "./persistence";
 
   let context: ContextMessage[] = $state([]);
   let tokenUsage: TokenUsage = $state({
@@ -48,7 +47,6 @@
 
       if (response.ok) {
         context = [];
-        save("context", context);
       } else {
         console.error("Failed to delete context");
       }
@@ -73,7 +71,6 @@
       if (contextResponse.ok) {
         const currentContext = await contextResponse.json();
         context = currentContext;
-        save("context", context);
       } else {
         console.error("Failed to refresh context");
       }
@@ -81,7 +78,6 @@
       if (tokenResponse.ok) {
         const currentTokenUsage = await tokenResponse.json();
         tokenUsage = currentTokenUsage;
-        save("tokenUsage", tokenUsage);
       } else {
         console.error("Failed to refresh token usage");
       }
@@ -101,31 +97,6 @@
   }
 
   onMount(() => {
-    // Load persisted state
-    const storedContext = load<ContextMessage[]>("context", []);
-    const storedTokenUsage = load<TokenUsage>("tokenUsage", {
-      contextLimit: null,
-      remainingTokens: null,
-    });
-    const storedContextExpanded = load<boolean>("contextExpanded", false);
-    const storedActiveTab = load<"context" | "tools">("activeTab", "context");
-    const storedToolDefinitions = load<AgentToolDefinition[]>(
-      "toolDefinitions",
-      []
-    );
-
-    if (storedContext.length > 0) {
-      context = storedContext;
-    }
-    if (storedTokenUsage.contextLimit !== null || storedTokenUsage.remainingTokens !== null) {
-      tokenUsage = storedTokenUsage;
-    }
-    contextExpanded = storedContextExpanded;
-    activeTab = storedActiveTab;
-    if (storedToolDefinitions.length > 0) {
-      toolDefinitions = storedToolDefinitions;
-    }
-
     contextEventSource = new EventSource(
       INSPECTION_URL + "/inspection/context"
     );
@@ -134,7 +105,6 @@
       try {
         const newContext = JSON.parse(event.data);
         context = newContext;
-        save("context", context);
       } catch (e) {
         console.error("Failed to parse context data:", e);
       }
@@ -151,7 +121,6 @@
         const data = JSON.parse(event.data);
         if (data.totalTokens !== undefined) {
           tokenUsage = data;
-          save("tokenUsage", tokenUsage);
         }
       } catch (e) {
         console.error("Failed to parse token data:", e);
@@ -168,7 +137,6 @@
       try {
         const tools = JSON.parse(event.data);
         toolDefinitions = tools;
-        save("toolDefinitions", toolDefinitions);
       } catch (e) {
         console.error("Failed to parse tool definitions data:", e);
       }
@@ -192,16 +160,8 @@
 <div class="context-section">
   <div
     class="context-header"
-    onclick={() => {
-      contextExpanded = !contextExpanded;
-      save("contextExpanded", contextExpanded);
-    }}
-    onkeydown={(e) => {
-      if (e.key === "Enter") {
-        contextExpanded = !contextExpanded;
-        save("contextExpanded", contextExpanded);
-      }
-    }}
+    onclick={() => (contextExpanded = !contextExpanded)}
+    onkeydown={(e) => e.key === "Enter" && (contextExpanded = !contextExpanded)}
     role="button"
     tabindex="0"
   >
@@ -248,7 +208,6 @@
           onclick={(e) => {
             e.stopPropagation();
             activeTab = "context";
-            save("activeTab", activeTab);
           }}
         >
           messages
@@ -258,7 +217,6 @@
           onclick={(e) => {
             e.stopPropagation();
             activeTab = "tools";
-            save("activeTab", activeTab);
           }}
         >
           tools

@@ -39,7 +39,7 @@
   onclick={downloadInspectionSnapshot}
   title="Download inspection log"
 >
-  download txt snapshot ⬇
+  txt trace snapshot ⬇
 </button>
 
 <style>

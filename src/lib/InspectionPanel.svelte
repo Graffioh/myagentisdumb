@@ -5,7 +5,7 @@
   import InspectionStream from "./InspectionStream.svelte";
   import type { InspectionEventDisplay } from "../types";
   import type { InspectionEvent } from "../../protocol/types";
-  import { load, save } from "./persistence";
+  import { load, save } from "../persistence";
 
   let events: InspectionEventDisplay[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");

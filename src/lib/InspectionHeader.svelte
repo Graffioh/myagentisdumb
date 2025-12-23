@@ -25,7 +25,7 @@
       aria-label="Delete all events"
       disabled={events.length === 0}
     >
-      delete events
+      clear
     </button>
     <DownloadSnapshot {events} />
     <div class="pill {status}">
