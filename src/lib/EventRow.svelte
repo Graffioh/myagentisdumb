@@ -4,12 +4,19 @@
 
   interface Props {
     event: InspectionEventDisplay;
+    highlighted?: boolean;
     onToggleExpand: (eventId: number) => void;
     onRemove: (eventId: number) => void;
     onToggleWarningMark: (eventId: number) => void;
   }
 
-  let { event, onToggleExpand, onRemove, onToggleWarningMark }: Props = $props();
+  let {
+    event,
+    highlighted = false,
+    onToggleExpand,
+    onRemove,
+    onToggleWarningMark,
+  }: Props = $props();
 
   function getFirstLine(data: string): string {
     return data.split("\n")[0];
@@ -40,7 +47,7 @@
   );
 </script>
 
-<div class="row">
+<div class="row" class:highlighted data-event-id={event.id}>
   <div class="ts">{new Date(event.ts).toLocaleTimeString()}</div>
   <div class="data-container">
     {#if multiline}
@@ -111,6 +118,16 @@
     gap: 10px;
     padding: 6px 0;
     border-bottom: 1px solid rgba(214, 214, 214, 0.153);
+    transition:
+      background-color 0.3s ease,
+      border-color 0.3s ease;
+  }
+
+  .row.highlighted {
+    background-color: rgba(88, 166, 255, 0.15);
+    border-bottom-color: rgba(88, 166, 255, 0.4);
+    border-left: 3px solid rgba(88, 166, 255, 0.6);
+    padding-left: 3px;
   }
 
   .ts {

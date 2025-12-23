@@ -81,6 +81,26 @@ If it doesn't contain a parent / children structure, it will be displayed as pla
   );
 ```
 
+#### Latency heatmap
+
+The latency heatmap visualizes the time between consecutive events within each agent loop iteration. To enable it, mark the start and end of your agent loop:
+
+```ts
+import { createHttpInspectionReporter } from "./reporter";
+
+const reporter = createHttpInspectionReporter();
+
+// At the start of processing a user message/request
+await reporter.latencyLoopStart("Agent is processing the user input...");
+
+// ... your agent logic, traces, tool calls ...
+
+// At the end of the loop (when response is complete)
+await reporter.latencyLoopEnd("Loop completed");
+```
+
+The heatmap will only be displayed when loop markers are present. Each bar represents the latency (time difference) between consecutive events within the loop. The first event of each loop has latency 0. Clicking on a bar highlights the corresponding event in the inspection stream.
+
 #### Others
 
 - `tokens` ➜ (currentTokensUsage: number, modelContextLimit: number) 

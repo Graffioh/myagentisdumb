@@ -1,5 +1,7 @@
 /**
- * Inspection Reporter - HTTP client for sending events to the inspection server to be imported inside the agent loop.
+ * Inspection Reporter
+ *  + HTTP client for sending events to the inspection server to be imported inside the agent loop.
+ *  + Latency loop markers for tracking agent loop iterations and calculating latency heatmap.
  *
  * This module provides a ready-to-use client for any agent implementation
  * to send debugging events to the inspection server.
@@ -21,7 +23,7 @@
  */
 
 import type { InspectionEvent, ContextMessage, AgentToolDefinition } from "../protocol/types";
-import type { InspectionEventLabel } from "../protocol/types";
+import { InspectionEventLabel } from "../protocol/types";
 
 type InspectionReporter = {
     trace: (message: string, children?: Array<{ label: InspectionEventLabel; data: string }>) => Promise<void>;
@@ -29,6 +31,8 @@ type InspectionReporter = {
     tokens: (currentUsage: number, maxTokens: number | null) => Promise<void>;
     tools: (toolDefinitions: AgentToolDefinition[]) => Promise<void>;
     model: (modelName: string) => Promise<void>;
+    latencyLoopStart: (message?: string) => Promise<void>;
+    latencyLoopEnd: (message?: string) => Promise<void>;
 };
 
 /**
@@ -44,7 +48,7 @@ export function createHttpInspectionReporter(
             console.log("Sending inspection trace:", message);
             try {
                 // If children provided, it's a trace event; otherwise it's a log event
-                const event: InspectionEvent = children 
+                const event: InspectionEvent = children
                     ? { message, children }
                     : { message };
                 const response = await fetch(`${baseUrl}/api/inspection/trace`, {
@@ -123,6 +127,46 @@ export function createHttpInspectionReporter(
                 }
             } catch (error) {
                 console.error("Error sending model name:", error);
+            }
+        },
+
+        async latencyLoopStart(message: string = "Latency loop started"): Promise<void> {
+            try {
+                const event: InspectionEvent = {
+                    message,
+                    children: [{ label: InspectionEventLabel.LatencyLoopStart, data: "" }]
+                };
+                const response = await fetch(`${baseUrl}/api/inspection/trace`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ event }),
+                });
+
+                if (!response.ok) {
+                    console.error(`Failed to send latency loop start: ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error("Error sending latency loop start:", error);
+            }
+        },
+
+        async latencyLoopEnd(message: string = "Latency loop ended"): Promise<void> {
+            try {
+                const event: InspectionEvent = {
+                    message,
+                    children: [{ label: InspectionEventLabel.LatencyLoopEnd, data: "" }]
+                };
+                const response = await fetch(`${baseUrl}/api/inspection/trace`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ event }),
+                });
+
+                if (!response.ok) {
+                    console.error(`Failed to send latency loop end: ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error("Error sending latency loop end:", error);
             }
         },
     };

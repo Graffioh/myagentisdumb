@@ -3,15 +3,17 @@
   import CurrentContext from "./CurrentContext.svelte";
   import InspectionHeader from "./InspectionHeader.svelte";
   import InspectionStream from "./InspectionStream.svelte";
+  import LatencyHeatmap from "./LatencyHeatmap.svelte";
   import type { InspectionEventDisplay } from "../types";
   import type { InspectionEvent } from "../../protocol/types";
-  import { load, save } from "../persistence";
+  import { load, save } from "../utils/persistence";
 
   let events: InspectionEventDisplay[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");
   let lastError = $state<string | null>(null);
   let eventId = $state(0);
   let modelName = $state<string>("");
+  let highlightedEventId = $state<number | null>(null);
 
   let eventSource: EventSource | null = null;
   let modelEventSource: EventSource | null = null;
@@ -80,6 +82,9 @@
 
   function removeEventRow(eventId: number) {
     events = events.filter((e) => e.id !== eventId);
+    if (highlightedEventId === eventId) {
+      highlightedEventId = null;
+    }
     save("events", events);
   }
 
@@ -93,15 +98,26 @@
   function deleteAllEvents() {
     events = [];
     eventId = 0;
+    highlightedEventId = null;
     save("events", events);
     save("eventId", eventId);
+  }
+
+  function highlightEvent(eventIndex: number) {
+    if (eventIndex >= 0 && eventIndex < events.length) {
+      highlightedEventId = events[eventIndex].id;
+      // Clear highlight after 5 seconds
+      setTimeout(() => {
+        highlightedEventId = null;
+      }, 5000);
+    }
   }
 
   onMount(() => {
     // Load persisted events and eventId
     const storedEvents = load<InspectionEventDisplay[]>("events", []);
     const storedEventId = load<number>("eventId", 0);
-    
+
     if (storedEvents.length > 0) {
       events = storedEvents;
       eventId = storedEventId;
@@ -120,18 +136,18 @@
         status = "connected";
         lastError = null;
       }
-      
+
       const data = String(event.data ?? "");
       // Filter out the initial connection message
       try {
         const parsed = JSON.parse(data);
         if (parsed?.message === "connected") {
-          return; 
+          return;
         }
       } catch {
         // Do nothing
       }
-      
+
       pushEvent(data);
     };
 
@@ -167,14 +183,22 @@
 </script>
 
 <div id="inspection">
-  <InspectionHeader {modelName} {status} {events} onDeleteAll={deleteAllEvents} />
+  <InspectionHeader
+    {modelName}
+    {status}
+    {events}
+    onDeleteAll={deleteAllEvents}
+  />
 
   {#if lastError}
     <div class="error">{lastError}</div>
   {/if}
 
+  <LatencyHeatmap {events} onSelectEvent={highlightEvent} />
+
   <InspectionStream
     {events}
+    {highlightedEventId}
     onToggleExpand={toggleExpand}
     onRemove={removeEventRow}
     onToggleWarningMark={toggleWarningMark}

@@ -5,13 +5,20 @@
 
   interface Props {
     events: InspectionEventDisplay[];
+    highlightedEventId: number | null;
     onToggleExpand: (eventId: number) => void;
     onRemove: (eventId: number) => void;
     onToggleWarningMark: (eventId: number) => void;
   }
 
   let streamElement: HTMLDivElement | null = $state(null);
-  let { events, onToggleExpand, onRemove, onToggleWarningMark }: Props = $props();
+  let {
+    events,
+    highlightedEventId,
+    onToggleExpand,
+    onRemove,
+    onToggleWarningMark,
+  }: Props = $props();
 
   // Auto-scroll when events change
   $effect(() => {
@@ -23,6 +30,20 @@
       });
     }
   });
+
+  // Scroll to highlighted event
+  $effect(() => {
+    if (highlightedEventId !== null && streamElement) {
+      tick().then(() => {
+        const eventElement = streamElement?.querySelector(
+          `[data-event-id="${highlightedEventId}"]`
+        );
+        if (eventElement) {
+          eventElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+    }
+  });
 </script>
 
 <div class="stream" bind:this={streamElement}>
@@ -30,7 +51,13 @@
     <div class="empty">No inspection events yet.</div>
   {:else}
     {#each events as e (e.id)}
-      <EventRow event={e} {onToggleExpand} {onRemove} {onToggleWarningMark} />
+      <EventRow
+        event={e}
+        highlighted={highlightedEventId === e.id}
+        {onToggleExpand}
+        {onRemove}
+        {onToggleWarningMark}
+      />
     {/each}
   {/if}
 </div>

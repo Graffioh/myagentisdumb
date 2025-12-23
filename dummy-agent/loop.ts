@@ -57,11 +57,12 @@ export async function runLoop(userInput: string) {
 
     await updateContext({ role: "user", content: userInput });
 
+    // Mark the start of the agent loop (enables latency heatmap)
+    await inspectionReporter.latencyLoopStart("Agent is processing the user input...");
+
     while (true) {
         const currentContext = getContext();
         const messages: AgentMessage[] = currentContext;
-
-        await inspectionReporter.trace(`Agent is processing the user input...`);
 
         const response = await fetch(OPENROUTER_API_URL, {
             method: "POST",
@@ -84,7 +85,7 @@ export async function runLoop(userInput: string) {
         }
 
         const data = await response.json();
-        
+
         await inspectionReporter.trace(`Full OpenRouter API response: ${JSON.stringify(data, null, 2)}`);
 
         // Extract and send token usage
@@ -111,7 +112,7 @@ export async function runLoop(userInput: string) {
             const toolNames = toolCalls.map((call: AgentToolCall) => call.function.name).join(", ");
             const toolCount = toolCalls.length;
             const toolText = toolCount === 1 ? "tool" : "tools";
-            
+
             // Emit structured event (in this case, with reasoning if present)
             if (reasoning) {
                 await inspectionReporter.trace(
@@ -165,7 +166,7 @@ export async function runLoop(userInput: string) {
         }
 
         const finalContent = msg.content ? msg.content : `The agent is confused (ᗒᗣᗕ)`;
-        
+
         // Emit structured event with reasoning if present
         if (reasoning) {
             await inspectionReporter.trace(
@@ -183,6 +184,9 @@ export async function runLoop(userInput: string) {
             role: "assistant",
             content: msg.content
         });
+
+        // Mark the end of the agent loop (enables latency heatmap)
+        await inspectionReporter.latencyLoopEnd("Latency loop completed");
 
         return finalContent;
     }
