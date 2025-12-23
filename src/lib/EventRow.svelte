@@ -124,9 +124,9 @@
   }
 
   .row.highlighted {
-    background-color: rgba(88, 166, 255, 0.15);
-    border-bottom-color: rgba(88, 166, 255, 0.4);
-    border-left: 3px solid rgba(88, 166, 255, 0.6);
+    background-color: rgba(230, 237, 243, 0.12);
+    border-bottom-color: rgba(230, 237, 243, 0.35);
+    border-left: 3px solid rgba(230, 237, 243, 0.5);
     padding-left: 3px;
   }
 

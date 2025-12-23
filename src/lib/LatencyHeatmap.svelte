@@ -211,11 +211,6 @@
     z-index: 1;
   }
 
-  .heatmap-bar:focus {
-    outline: 2px solid rgba(88, 166, 255, 0.6);
-    outline-offset: 2px;
-  }
-
   .heatmap-bar-label {
     font-size: 9px;
     font-weight: 600;
