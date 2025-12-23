@@ -20,15 +20,19 @@
     onToggleWarningMark,
   }: Props = $props();
 
-  // Auto-scroll when events change
+  let previousEventCount = $state(0);
+
+  // Auto-scroll only when new events are added
   $effect(() => {
-    if (events.length > 0 && streamElement) {
+    const currentCount = events.length;
+    if (currentCount > previousEventCount && streamElement) {
       tick().then(() => {
         if (streamElement) {
           streamElement.scrollTop = streamElement.scrollHeight;
         }
       });
     }
+    previousEventCount = currentCount;
   });
 
   // Scroll to highlighted event
