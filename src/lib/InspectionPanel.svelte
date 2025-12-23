@@ -107,7 +107,24 @@
     };
 
     eventSource.onmessage = (event: MessageEvent) => {
-      pushEvent(String(event.data ?? ""));
+      // Safari may not fire onopen reliably, so mark as connected on first message
+      if (status === "connecting") {
+        status = "connected";
+        lastError = null;
+      }
+      
+      const data = String(event.data ?? "");
+      // Filter out the initial connection message
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed?.message === "connected") {
+          return; 
+        }
+      } catch {
+        // Do nothing
+      }
+      
+      pushEvent(data);
     };
 
     eventSource.onerror = () => {

@@ -48,6 +48,9 @@ app.get("/api/inspection/trace", async (req: Request, res: Response) => {
 
   inspectionClients.push(res);
 
+  // Send initial connection message to help Safari detect connection
+  res.write("data: {\"message\":\"connected\"}\n\n");
+
   req.on("close", () => {
     inspectionClients = inspectionClients.filter((client) => client !== res);
     res.end();
