@@ -48,8 +48,6 @@ app.get("/api/inspection/trace", async (req: Request, res: Response) => {
 
   inspectionClients.push(res);
 
-  res.write("data: Connected to Agent Inspection Channel!\n\n");
-
   req.on("close", () => {
     inspectionClients = inspectionClients.filter((client) => client !== res);
     res.end();

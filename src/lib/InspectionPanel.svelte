@@ -5,6 +5,7 @@
   import InspectionStream from "./InspectionStream.svelte";
   import type { InspectionEventDisplay } from "../types";
   import type { InspectionEvent } from "../../protocol/types";
+  import { load, save } from "./persistence";
 
   let events: InspectionEventDisplay[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");
@@ -65,19 +66,39 @@
 
     const next = [...events, eventData];
     events = next.length > 300 ? next.slice(next.length - 300) : next;
+    save("events", events);
+    save("eventId", eventId);
   }
 
   function toggleExpand(eventId: number) {
     events = events.map((e) =>
       e.id === eventId ? { ...e, expanded: !e.expanded } : e
     );
+    save("events", events);
   }
 
   function removeEventRow(eventId: number) {
     events = events.filter((e) => e.id !== eventId);
+    save("events", events);
+  }
+
+  function deleteAllEvents() {
+    events = [];
+    eventId = 0;
+    save("events", events);
+    save("eventId", eventId);
   }
 
   onMount(() => {
+    // Load persisted events and eventId
+    const storedEvents = load<InspectionEventDisplay[]>("events", []);
+    const storedEventId = load<number>("eventId", 0);
+    
+    if (storedEvents.length > 0) {
+      events = storedEvents;
+      eventId = storedEventId;
+    }
+
     eventSource = new EventSource(INSPECTION_URL + "/inspection/trace");
 
     eventSource.onopen = () => {
@@ -121,7 +142,7 @@
 </script>
 
 <div id="inspection">
-  <InspectionHeader {modelName} {status} {events} />
+  <InspectionHeader {modelName} {status} {events} onDeleteAll={deleteAllEvents} />
 
   {#if lastError}
     <div class="error">{lastError}</div>

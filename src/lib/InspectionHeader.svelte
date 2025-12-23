@@ -6,9 +6,10 @@
     modelName: string;
     status: "connecting" | "connected" | "error";
     events: InspectionEventDisplay[];
+    onDeleteAll: () => void;
   }
 
-  let { modelName = "", status = "connecting", events }: Props = $props();
+  let { modelName = "", status = "connecting", events, onDeleteAll }: Props = $props();
 </script>
 
 <div class="header">
@@ -17,6 +18,15 @@
     <div class="model">{modelName || "no model name available"}</div>
   </div>
   <div class="header-right-half">
+    <button
+      class="delete-events-button"
+      onclick={onDeleteAll}
+      title="Delete all events"
+      aria-label="Delete all events"
+      disabled={events.length === 0}
+    >
+      delete events
+    </button>
     <DownloadSnapshot {events} />
     <div class="pill {status}">
       {#if status === "connecting"}Connecting...{/if}
@@ -77,5 +87,34 @@
   .pill.error {
     border-color: rgba(248, 81, 73, 0.7);
     color: #ff7b72;
+  }
+
+  .delete-events-button {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: #c9d1d9;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .delete-events-button:hover:not(:disabled) {
+    border-color: rgba(248, 81, 73, 0.7);
+    color: #ff7b72;
+    background: rgba(248, 81, 73, 0.1);
+  }
+
+  .delete-events-button:active:not(:disabled) {
+    background: rgba(248, 81, 73, 0.2);
+  }
+
+  .delete-events-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 </style>
