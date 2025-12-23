@@ -36,20 +36,23 @@ If you don't use typescript, just adapt the code based on your programming langu
 
 ### What to pass to the inspector for reporting
 
-When you send SSE events to the inspector to be displayed in the Agent inspection panel you must send specific constrained informations (if you don't customize the frontend)
+When you send SSE events to the inspector to be displayed in the Agent inspection panel you must send specific constrained informations (if you don't customize the frontend).
 
-Below are some examples:
-
-#### Reasoning Trace
-
-You can send structured trace events with reasoning details using the `trace()` method:
-
+The main component is the `reporter`:
 ```ts
 import { createHttpInspectionReporter } from "./reporter";
 import { InspectionEventLabel } from "./protocol/types";
 
 const reporter = createHttpInspectionReporter();
+```
 
+Below are some examples of what informations you can send:
+
+#### Structured trace
+
+The `trace()` method sends events with a parent/child structure that will be displayed with expandable reasoning details in the UI. The reasoning label will be highlighted in orange to distinguish it from other content (if provided).
+
+```ts
 // Send a trace event with reasoning
 await reporter.trace(
     "Final Assistant message",
@@ -60,14 +63,15 @@ await reporter.trace(
 );
 ```
 
-The `trace()` method sends events with a parent/child structure that will be displayed with expandable reasoning details in the UI. The reasoning label will be highlighted in orange to distinguish it from other content (if provided).
-
-If it doesn't contain a parent / children structure, it will be displayed as plain text.
-
 #### Execution timing for tools
+
+Measure and report the execution time of tool calls to identify performance bottlenecks. Wrap your tool execution with timing measurements and include both the duration and tool call details in the trace:
 
 ```ts
   const startTime = performance.now();
+  
+  // ... execute your tool here ...
+  
   const endTime = performance.now();
   const durationMs = endTime - startTime;
 
@@ -86,10 +90,6 @@ If it doesn't contain a parent / children structure, it will be displayed as pla
 The latency heatmap visualizes the time between consecutive events within each agent loop iteration. To enable it, mark the start and end of your agent loop:
 
 ```ts
-import { createHttpInspectionReporter } from "./reporter";
-
-const reporter = createHttpInspectionReporter();
-
 // At the start of processing a user message/request
 await reporter.latencyStart("Agent is processing the user input...");
 
@@ -98,8 +98,6 @@ await reporter.latencyStart("Agent is processing the user input...");
 // At the end of the loop (when response is complete)
 await reporter.latencyEnd("Loop completed");
 ```
-
-The heatmap will only be displayed when loop markers are present. Each bar represents the latency (time difference) between consecutive events within the loop. The first event of each loop has latency 0. Clicking on a bar highlights the corresponding event in the inspection stream.
 
 #### Others
 
