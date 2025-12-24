@@ -32,11 +32,15 @@ let contextClients: Response[] = [];
 let tokenClients: Response[] = [];
 let toolClients: Response[] = [];
 let modelClients: Response[] = [];
+let agentStatusClients: Response[] = [];
 
 // Store tool definitions
 let toolDefinitions: unknown[] = [];
 // Store model name
 let currentModel: string = "";
+// Track last agent activity
+let lastAgentActivity: number | null = null;
+const AGENT_TIMEOUT_MS = 10000; // Consider agent disconnected after 10 seconds of inactivity
 
 // Server sent events (SSE) Inspection trace endpoint
 app.get("/api/inspection/trace", async (req: Request, res: Response) => {
@@ -65,6 +69,16 @@ app.post("/api/inspection/trace", async (req: Request, res: Response) => {
     
     if (!event) {
       return res.status(400).json({ error: "Event is required" });
+    }
+
+    // Update agent activity timestamp
+    const wasConnected = isAgentConnected();
+    lastAgentActivity = Date.now();
+    const isConnected = isAgentConnected();
+
+    // Notify status clients if connection status changed
+    if (wasConnected !== isConnected) {
+      broadcastAgentStatus();
     }
 
     const payload = JSON.stringify(event);
@@ -112,6 +126,9 @@ app.post("/api/inspection/context", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Context must be an array" });
     }
 
+    // Update agent activity timestamp
+    lastAgentActivity = Date.now();
+
     contextClients.forEach((client) => {
       try {
         client.write(`data: ${JSON.stringify(context)}\n\n`);
@@ -150,6 +167,9 @@ app.get("/api/inspection/tokens", async (req: Request, res: Response) => {
 app.post("/api/inspection/tokens", async (req: Request, res: Response) => {
   try {
     const { currentUsage, maxTokens } = req.body;
+
+    // Update agent activity timestamp
+    lastAgentActivity = Date.now();
 
     const tokenUsage = {
       totalTokens: currentUsage,
@@ -200,6 +220,9 @@ app.post("/api/inspection/tools", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Tool definitions must be an array" });
     }
 
+    // Update agent activity timestamp
+    lastAgentActivity = Date.now();
+
     toolDefinitions = tools;
 
     toolClients.forEach((client) => {
@@ -245,6 +268,9 @@ app.post("/api/inspection/model", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Model must be a string" });
     }
 
+    // Update agent activity timestamp
+    lastAgentActivity = Date.now();
+
     currentModel = model;
 
     modelClients.forEach((client) => {
@@ -261,6 +287,52 @@ app.post("/api/inspection/model", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to send model name update" });
   }
 });
+
+// Helper function to check if agent is connected
+function isAgentConnected(): boolean {
+  if (lastAgentActivity === null) return false;
+  return Date.now() - lastAgentActivity < AGENT_TIMEOUT_MS;
+}
+
+// Helper function to broadcast agent status to all connected clients
+function broadcastAgentStatus() {
+  const status = { connected: isAgentConnected() };
+  agentStatusClients.forEach((client) => {
+    try {
+      client.write(`data: ${JSON.stringify(status)}\n\n`);
+    } catch (error) {
+      agentStatusClients = agentStatusClients.filter((c) => c !== client);
+    }
+  });
+}
+
+// Server sent events (SSE) Agent status endpoint
+app.get("/api/inspection/agent-status", async (req: Request, res: Response) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  res.flushHeaders();
+
+  agentStatusClients.push(res);
+
+  // Send initial status
+  const status = { connected: isAgentConnected() };
+  res.write(`data: ${JSON.stringify(status)}\n\n`);
+
+  req.on("close", () => {
+    agentStatusClients = agentStatusClients.filter((client) => client !== res);
+    res.end();
+    console.log("Agent status SSE Client disconnected");
+  });
+});
+
+// Periodically check agent connection status and broadcast updates
+setInterval(() => {
+  const currentStatus = isAgentConnected();
+  // Broadcast status update
+  broadcastAgentStatus();
+}, 2000); // Check every 2 seconds
 
 // Start the server
 app.listen(PORT, HOST, () => {

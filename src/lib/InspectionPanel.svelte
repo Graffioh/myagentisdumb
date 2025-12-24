@@ -10,6 +10,7 @@
 
   let events: InspectionEventDisplay[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");
+  let agentConnected = $state<boolean>(false);
   let lastError = $state<string | null>(null);
   let eventId = $state(0);
   let modelName = $state<string>("");
@@ -17,6 +18,7 @@
 
   let eventSource: EventSource | null = null;
   let modelEventSource: EventSource | null = null;
+  let agentStatusEventSource: EventSource | null = null;
 
   const INSPECTION_URL =
     import.meta.env.VITE_INSPECTION_URL || "http://localhost:6969/api";
@@ -172,6 +174,23 @@
     modelEventSource.onerror = () => {
       console.error("Model SSE connection error");
     };
+
+    agentStatusEventSource = new EventSource(INSPECTION_URL + "/inspection/agent-status");
+
+    agentStatusEventSource.onmessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.connected !== undefined) {
+          agentConnected = data.connected;
+        }
+      } catch (e) {
+        console.error("Failed to parse agent status data:", e);
+      }
+    };
+
+    agentStatusEventSource.onerror = () => {
+      console.error("Agent status SSE connection error");
+    };
   });
 
   onDestroy(() => {
@@ -179,6 +198,8 @@
     eventSource = null;
     modelEventSource?.close();
     modelEventSource = null;
+    agentStatusEventSource?.close();
+    agentStatusEventSource = null;
   });
 </script>
 
@@ -186,6 +207,7 @@
   <InspectionHeader
     {modelName}
     {status}
+    {agentConnected}
     {events}
     onDeleteAll={deleteAllEvents}
   />

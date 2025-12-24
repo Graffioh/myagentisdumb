@@ -5,11 +5,12 @@
   interface Props {
     modelName: string;
     status: "connecting" | "connected" | "error";
+    agentConnected: boolean;
     events: InspectionEventDisplay[];
     onDeleteAll: () => void;
   }
 
-  let { modelName = "", status = "connecting", events, onDeleteAll }: Props = $props();
+  let { modelName = "", status = "connecting", agentConnected = false, events, onDeleteAll }: Props = $props();
 </script>
 
 <div class="header">
@@ -28,10 +29,11 @@
       clear
     </button>
     <DownloadSnapshot {events} />
-    <div class="pill {status}">
+    <div class="pill {status === 'error' ? 'error' : status === 'connecting' ? 'connecting' : agentConnected ? 'connected' : 'idle'}">
       {#if status === "connecting"}Connecting...{/if}
-      {#if status === "connected"}Live{/if}
       {#if status === "error"}Error{/if}
+      {#if status === "connected" && agentConnected}Live{/if}
+      {#if status === "connected" && !agentConnected}Idle{/if}
     </div>
   </div>
 </div>
@@ -79,6 +81,10 @@
   .pill.connected {
     border-color: rgba(46, 160, 67, 0.6);
     color: #7ee787;
+  }
+  .pill.idle {
+    border-color: rgba(158, 158, 158, 0.6);
+    color: #9e9e9e;
   }
   .pill.connecting {
     border-color: rgba(210, 153, 34, 0.7);
