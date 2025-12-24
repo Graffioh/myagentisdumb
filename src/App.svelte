@@ -2,7 +2,7 @@
   import Chat from "./lib/Chat.svelte";
   import InspectionPanel from "./lib/InspectionPanel.svelte";
 
-  let chatOpen = $state(true);
+  let chatOpen = $state(false);
 
   function toggleChat() {
     chatOpen = !chatOpen;
