@@ -7,8 +7,9 @@ const inspectionReporter = createHttpInspectionReporter();
 let context: AgentMessage[] = [];
 let lastTokenUsage: TokenUsage = {
     promptTokens: 0,
-    completionTokens: 0,
+    modelOutputTokens: 0,
     totalTokens: 0,
+    modelReasoningTokens: null,
     contextLimit: null,
     remainingTokens: null,
 };
@@ -52,17 +53,17 @@ export async function clearContext(currentModel: string) {
     await inspectionReporter.context([]);
     await inspectionReporter.trace("Context cleared");
     
-    // Reset token usage to show "?" in the UI
     const contextLimit = await fetchModelContextLimit(currentModel);
     const resetTokenUsage: TokenUsage = {
         promptTokens: 0,
-        completionTokens: 0,
+        modelOutputTokens: 0,
         totalTokens: 0,
-        contextLimit,
-        remainingTokens: null,
+        modelReasoningTokens: null,
+        contextLimit: contextLimit ?? null,
+        remainingTokens: contextLimit ?? null
     };
     lastTokenUsage = resetTokenUsage;
-    await inspectionReporter.tokens(resetTokenUsage.totalTokens, resetTokenUsage.contextLimit);
+    await inspectionReporter.tokens(resetTokenUsage.totalTokens, resetTokenUsage.contextLimit ?? null);
 }
 
 export function getContext(): AgentMessage[] {

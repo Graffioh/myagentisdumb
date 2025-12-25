@@ -54,11 +54,12 @@ export type ContextMessage = {
  * Token usage information
  */
 export type TokenUsage = {
-  promptTokens: number;
-  completionTokens: number;
   totalTokens: number;
-  contextLimit: number | null;
-  remainingTokens: number | null;
+  promptTokens?: number | null;
+  modelOutputTokens?: number | null;
+  modelReasoningTokens?: number | null;
+  remainingTokens?: number | null;
+  contextLimit?: number | null;
 };
 
 /**
@@ -72,6 +73,7 @@ export enum InspectionEventLabel {
   Reasoning = "Reasoning",
   ToolCalls = "Tool Calls",
   Timing = "Timing",
+  TokenUsage = "Token Usage",
   Custom = "Custom",
   LatencyStart = "__LATENCY_START__",
   LatencyEnd = "__LATENCY_END__",

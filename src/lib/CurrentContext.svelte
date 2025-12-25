@@ -4,10 +4,11 @@
     AgentToolDefinition,
     ContextMessage,
   } from "../../protocol/types";
-  import type { TokenUsage } from "../types";
+  import type { TokenUsage } from "../../protocol/types";
 
   let context: ContextMessage[] = $state([]);
   let tokenUsage: TokenUsage = $state({
+    totalTokens: 0,
     contextLimit: null,
     remainingTokens: null,
   });
@@ -173,12 +174,7 @@
         >Current Context ({context.length} messages)</span
       >
       <span class="token-info">
-        {formatTokens(
-          tokenUsage.contextLimit !== null &&
-            tokenUsage.remainingTokens !== null
-            ? tokenUsage.contextLimit - tokenUsage.remainingTokens
-            : null
-        )} / {formatTokens(tokenUsage.contextLimit)} tokens
+        {formatTokens(tokenUsage.totalTokens)} / {formatTokens(tokenUsage.contextLimit ?? null)} tokens
       </span>
     </div>
     <div class="context-header-right">

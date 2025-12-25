@@ -12,8 +12,5 @@ export type InspectionEventDisplay = {
   inspectionEvent: InspectionEvent;
 };
 
-export type TokenUsage = {
-  contextLimit: number | null;
-  remainingTokens: number | null;
-};
+// TokenUsage is now imported from protocol/types.ts
 // **********************

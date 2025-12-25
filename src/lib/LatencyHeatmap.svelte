@@ -36,7 +36,6 @@
   $effect(() => {
     const count = latencies.length;
     if (count > 0 && barsContainer) {
-      // Use requestAnimationFrame to ensure DOM has updated
       requestAnimationFrame(() => {
         if (barsContainer) {
           barsContainer.scrollLeft = barsContainer.scrollWidth;

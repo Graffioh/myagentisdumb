@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy, onMount } from "svelte";
   import TextInput from "./TextInput.svelte";
   import TextArea from "./TextArea.svelte";
   import type { ChatMessage } from "../../types";
@@ -6,9 +7,41 @@
   let messages: ChatMessage[] = $state([]);
   let chatText = $state("");
   let isSending = $state(false);
+  let contextEventSource: EventSource | null = null;
 
   const AGENT_URL =
     import.meta.env.VITE_AGENT_URL || "http://localhost:3002/api";
+  const INSPECTION_URL =
+    import.meta.env.VITE_INSPECTION_URL || "http://localhost:6969/api";
+
+  // Listen to context changes to detect when context is cleared
+  onMount(() => {
+    contextEventSource = new EventSource(
+      INSPECTION_URL + "/inspection/context"
+    );
+
+    contextEventSource.onmessage = (event: MessageEvent) => {
+      try {
+        const newContext = JSON.parse(event.data);
+        // If context is cleared (empty array), also clear local chat messages
+        if (Array.isArray(newContext) && newContext.length === 0) {
+          messages = [];
+          updateChatText();
+        }
+      } catch (e) {
+        console.error("Failed to parse context data:", e);
+      }
+    };
+
+    contextEventSource.onerror = () => {
+      console.error("Context SSE connection error");
+    };
+  });
+
+  onDestroy(() => {
+    contextEventSource?.close();
+    contextEventSource = null;
+  });
 
   function updateChatText() {
     chatText = messages

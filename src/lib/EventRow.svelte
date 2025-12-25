@@ -45,6 +45,33 @@
       (child) => child.label === InspectionEventLabel.Timing
     )?.data || null
   );
+  const hasTokenUsage = $derived(
+    hasChildren &&
+      event.inspectionEvent.children?.some(
+        (child) => child.label === InspectionEventLabel.TokenUsage
+      )
+  );
+  const tokenUsageData = $derived(
+    event.inspectionEvent.children?.find(
+      (child) => child.label === InspectionEventLabel.TokenUsage
+    )?.data || null
+  );
+  
+  // Extract and calculate total tokens from token usage data for badge display
+  // Note: reasoning tokens are excluded as they don't count toward context usage
+  const tokenUsageBadge = $derived(() => {
+    if (!tokenUsageData) return null;
+    // Extract tokens from format like "Prompt: 340 • Model output: 43 • (Extra) Model Reasoning: 24"
+    const promptMatch = tokenUsageData.match(/Prompt:\s*(\d+)/);
+    const outputMatch = tokenUsageData.match(/Model output:\s*(\d+)/);
+    
+    if (promptMatch && outputMatch) {
+      const prompt = parseInt(promptMatch[1]);
+      const output = parseInt(outputMatch[1]);
+      return (prompt + output).toString();
+    }
+    return null;
+  });
 </script>
 
 <div class="row" class:highlighted data-event-id={event.id}>
@@ -71,6 +98,11 @@
             >{timingData}</span
           >
         {/if}
+        {#if hasTokenUsage && tokenUsageBadge()}
+          <span class="token-usage-badge" title={tokenUsageData || "Token usage"}
+            >{tokenUsageBadge()} tokens</span
+          >
+        {/if}
       </div>
       {#if isExpanded && hasChildren}
         <div class="children {hasReasoning ? 'has-reasoning' : ''}">
@@ -82,7 +114,9 @@
                   ? 'reasoning-label'
                   : child.label === InspectionEventLabel.Timing
                     ? 'timing-label'
-                    : ''}"
+                    : child.label === InspectionEventLabel.TokenUsage
+                      ? 'token-usage-label'
+                      : ''}"
               >
                 {child.label}
               </div>
@@ -220,14 +254,29 @@
     font-family: monospace;
   }
 
+  .token-usage-badge {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(236, 72, 153, 0.15);
+    color: #ec4899;
+    border: 1px solid rgba(236, 72, 153, 0.3);
+    line-height: 1;
+    margin-top: 2px;
+    cursor: help;
+    font-family: monospace;
+  }
+
   .children {
     margin-top: 8px;
     padding-left: 12px;
-    border-left: 2px solid rgba(88, 166, 255, 0.3);
+    border-left: 2px solid rgba(230, 237, 243, 0.3);
   }
 
   .children.has-reasoning {
-    border-left-color: rgba(255, 149, 0, 0.3);
+    border-left-color: rgba(230, 237, 243, 0.3);
   }
 
   .child {
@@ -253,6 +302,10 @@
 
   .child-label.timing-label {
     color: #7ee787;
+  }
+
+  .child-label.token-usage-label {
+    color: #ec4899;
   }
 
   .child-data {

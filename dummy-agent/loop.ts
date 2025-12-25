@@ -87,18 +87,31 @@ export async function runLoop(userInput: string) {
 
         await inspectionReporter.trace(`Full OpenRouter API response: ${JSON.stringify(data, null, 2)}`);
 
-        // Extract token usage
+        // Extract token usage for per-request reporting
+        let requestTokenUsage: TokenUsage | null = null;
+        if (data.usage) {
+            requestTokenUsage = {
+                promptTokens: data.usage.prompt_tokens || 0,
+                modelOutputTokens: data.usage.completion_tokens || 0,
+                totalTokens: data.usage.total_tokens || 0,
+                modelReasoningTokens: data.usage.completion_tokens_details?.reasoning_tokens ?? null,
+            };
+        }
+
+        // Extract token usage for cumulative tracking
         if (data.usage) {
             const contextLimit = await fetchModelContextLimit(currentModel);
+            const totalTokens = data.usage.total_tokens || 0;
             const tokenUsage: TokenUsage = {
                 promptTokens: data.usage.prompt_tokens || 0,
-                completionTokens: data.usage.completion_tokens || 0,
-                totalTokens: data.usage.total_tokens || 0,
-                contextLimit,
-                remainingTokens: contextLimit !== null ? contextLimit - (data.usage.total_tokens || 0) : null,
+                modelOutputTokens: data.usage.completion_tokens || 0,
+                totalTokens,
+                modelReasoningTokens: data.usage.completion_tokens_details?.reasoning_tokens ?? null,
+                contextLimit: contextLimit ?? null,
+                remainingTokens: contextLimit !== null ? contextLimit - totalTokens : null,
             };
             setLastTokenUsage(tokenUsage);
-            await inspectionReporter.tokens(tokenUsage.totalTokens, tokenUsage.contextLimit);
+            await inspectionReporter.tokens(tokenUsage.totalTokens, tokenUsage.contextLimit ?? null);
         }
 
         const msg = data.choices[0].message;
@@ -112,13 +125,29 @@ export async function runLoop(userInput: string) {
             const toolCount = toolCalls.length;
             const toolText = toolCount === 1 ? "tool" : "tools";
 
+            // Validate all tool call arguments BEFORE adding to context
+            // This prevents corrupted messages from being added if the model returns malformed JSON
+            const parsedArgs: Record<string, unknown>[] = [];
+            for (const call of toolCalls) {
+                try {
+                    const args = JSON.parse(call.function.arguments || "{}");
+                    parsedArgs.push(args);
+                } catch (parseError) {
+                    await inspectionReporter.trace(
+                        `Error: Model returned malformed tool arguments for ${call.function.name}: ${call.function.arguments}`,
+                        [{ label: InspectionEventLabel.ToolCalls, data: JSON.stringify(call, null, 2) }]
+                    );
+                    throw new Error(`Model returned malformed JSON for tool ${call.function.name} arguments: ${call.function.arguments}`);
+                }
+            }
+
             if (reasoning) {
                 await inspectionReporter.trace(
                     `Agent executing ${toolCount} ${toolText}: ${toolNames}`,
                     [
                         { label: InspectionEventLabel.Reasoning, data: reasoning },
                         { label: InspectionEventLabel.ToolCalls, data: JSON.stringify(toolCalls, null, 2) }
-                    ]
+                    ],
                 );
             } else {
                 await inspectionReporter.trace(`Agent executing ${toolCount} ${toolText}: ${toolNames}`);
@@ -130,10 +159,11 @@ export async function runLoop(userInput: string) {
                 tool_calls: toolCalls
             });
 
-            // Call all tools one by one
-            for (const call of toolCalls) {
+            // Call all tools one by one 
+            for (let i = 0; i < toolCalls.length; i++) {
+                const call = toolCalls[i];
                 const toolName = call.function.name;
-                const args = JSON.parse(call.function.arguments || "{}");
+                const args = parsedArgs[i];
 
                 if (!toolImplementations[toolName]) {
                     throw new Error(`Unknown tool: ${toolName}`);
@@ -172,10 +202,11 @@ export async function runLoop(userInput: string) {
                 [
                     { label: InspectionEventLabel.Reasoning, data: reasoning },
                     { label: InspectionEventLabel.Content, data: finalContent }
-                ]
+                ],
+                requestTokenUsage
             );
         } else {
-            await inspectionReporter.trace(`Final Assistant message: ${finalContent}`);
+            await inspectionReporter.trace(`Final Assistant message: ${finalContent}`, undefined, requestTokenUsage);
         }
 
         await updateContext({
