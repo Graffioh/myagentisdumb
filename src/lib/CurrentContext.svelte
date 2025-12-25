@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
+  import ContextUsageBar from "./ContextUsageBar.svelte";
   import type {
     AgentToolDefinition,
     ContextMessage,
@@ -13,14 +14,14 @@
     remainingTokens: null,
   });
   let contextExpanded = $state(false);
-  let activeTab: "context" | "tools" = $state("context");
+  let activeTab: "context" | "tools" | "usage" = $state("usage");
   let toolDefinitions: AgentToolDefinition[] = $state([]);
   let contextEventSource: EventSource | null = null;
   let tokenEventSource: EventSource | null = null;
   let toolEventSource: EventSource | null = null;
 
   // Count tool calls per tool name
-  const toolCallCounts = $derived(() => {
+  const toolCallCounts = $derived.by(() => {
     const counts: Record<string, number> = {};
     for (const msg of context) {
       if ("tool_calls" in msg && msg.tool_calls) {
@@ -31,6 +32,45 @@
       }
     }
     return counts;
+  });
+
+  // Calculate token breakdown by category
+  const tokenBreakdown = $derived.by(() => {
+    // Estimate tokens using 4 characters = 1 token
+    const estimateTokens = (text: string) => {
+      return Math.ceil(text.length / 4);
+    };
+
+    // Calculate FIXED tokens (system prompt and tool definitions - always the same)
+    let fixedSystemTokens = 0;
+    for (const msg of context) {
+      if (msg.role === "system") {
+        fixedSystemTokens += estimateTokens(msg.content || "");
+      }
+    }
+    const fixedToolDefinitionTokens = estimateTokens(JSON.stringify(toolDefinitions));
+    
+    // Use actual token usage from API
+    const actualTotalTokens = tokenUsage.totalTokens || 0;
+    const limit = tokenUsage.contextLimit || 100000;
+    
+    // Simple calculation: User/Assistant = Total - (SystemPrompt + Tools)
+    const systemTokens = fixedSystemTokens;
+    const toolTokens = fixedToolDefinitionTokens;
+    const conversationTokens = Math.max(0, actualTotalTokens - (systemTokens + toolTokens));
+
+    const remaining = tokenUsage.remainingTokens ?? Math.max(0, limit - actualTotalTokens);
+    const hasContextLimit = tokenUsage.contextLimit !== null;
+
+    return {
+      systemTokens,
+      toolTokens,
+      conversationTokens,
+      remainingTokens: remaining,
+      totalLimit: limit,
+      usedTokens: actualTotalTokens,
+      hasContextLimit,
+    };
   });
 
   const AGENT_URL =
@@ -202,6 +242,15 @@
     <div class="tabs-container">
       <div class="tabs-header">
         <button
+          class="tab-button usage-tab {activeTab === 'usage' ? 'active' : ''}"
+          onclick={(e) => {
+            e.stopPropagation();
+            activeTab = "usage";
+          }}
+        >
+          usage
+        </button>
+        <button
           class="tab-button {activeTab === 'context' ? 'active' : ''}"
           onclick={(e) => {
             e.stopPropagation();
@@ -221,7 +270,9 @@
         </button>
       </div>
       <div class="context-content">
-        {#if activeTab === "context"}
+        {#if activeTab === "usage"}
+          <ContextUsageBar breakdown={tokenBreakdown} />
+        {:else if activeTab === "context"}
           {#if context.length === 0}
             <div class="empty-context">No messages in context yet.</div>
           {:else}
@@ -248,12 +299,12 @@
               <div class="tool-definition">
                 <div class="tool-name-container">
                   <div class="tool-name">{tool.function.name}</div>
-                  {#if toolCallCounts()[tool.function.name]}
+                  {#if toolCallCounts[tool.function.name]}
                     <span
                       class="tool-call-count"
                       title="Number of times this tool has been called"
                     >
-                      ({toolCallCounts()[tool.function.name]} calls)
+                      ({toolCallCounts[tool.function.name]} calls)
                     </span>
                   {/if}
                 </div>
@@ -560,5 +611,16 @@
     overflow-x: auto;
     white-space: pre-wrap;
     word-break: break-word;
+  }
+
+  .tab-button.usage-tab:hover {
+    border-color: rgba(46, 160, 67, 0.5);
+    background: rgba(46, 160, 67, 0.05);
+  }
+
+  .tab-button.usage-tab.active {
+    border-color: rgba(46, 160, 67, 0.7);
+    color: #7ee787;
+    background: rgba(46, 160, 67, 0.15);
   }
 </style>
