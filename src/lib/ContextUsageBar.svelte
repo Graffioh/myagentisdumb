@@ -108,7 +108,7 @@
   }
 
   .usage-segment:hover {
-    cursor: help;
+    cursor: default;
     filter: brightness(1.15);
   }
 
