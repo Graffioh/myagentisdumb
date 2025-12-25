@@ -41,16 +41,20 @@
       return Math.ceil(text.length / 4);
     };
 
-    // Calculate FIXED tokens (system prompt and tool definitions - always the same)
+    // Calculate system tokens (FIXED - only counted once, appears in first message)
     let systemTokens = 0;
     for (const msg of context) {
       if (msg.role === "system") {
         systemTokens += estimateTokens(msg.content || "");
       }
     }
-    const toolTokens = estimateTokens(JSON.stringify(toolDefinitions));
     
-    // Calculate conversation tokens from actual messages (user, assistant, tool responses)
+    // Calculate tool tokens (FIXED - tools are sent with every API call but visualized as constant overhead)
+    // Tool definitions include the schema which adds significant overhead beyond just the JSON
+    // Approximate multiplier: ~1.5x for schema overhead
+    const toolTokens = Math.ceil(estimateTokens(JSON.stringify(toolDefinitions)) * 1.5);
+    
+    // Calculate conversation tokens from actual messages (GROWING)
     let conversationTokens = 0;
     for (const msg of context) {
       if (msg.role === "user" || msg.role === "assistant") {
@@ -58,18 +62,24 @@
           conversationTokens += estimateTokens(msg.content);
         }
         if ("tool_calls" in msg && msg.tool_calls) {
-          conversationTokens += estimateTokens(JSON.stringify(msg.tool_calls));
+          // Tool calls include function name + arguments + formatting overhead
+          conversationTokens += Math.ceil(estimateTokens(JSON.stringify(msg.tool_calls)) * 1.2);
         }
       } else if (msg.role === "tool") {
-        conversationTokens += estimateTokens(msg.content || "");
+        // Tool responses also have some formatting overhead
+        conversationTokens += Math.ceil(estimateTokens(msg.content || "") * 1.1);
       }
     }
 
-    // Use actual token usage from API for remaining calculation
-    const actualTotalTokens = tokenUsage.totalTokens || 0;
+    // Calculate current context size (what would be sent in the next API call)
+    const currentContextTokens = systemTokens + toolTokens + conversationTokens;
+    
+    // Get limits from API
     const limit = tokenUsage.contextLimit || 100000;
-    const remaining = tokenUsage.remainingTokens ?? Math.max(0, limit - actualTotalTokens);
     const hasContextLimit = tokenUsage.contextLimit !== null;
+    
+    // Remaining is based on current context size, not accumulated usage
+    const remaining = Math.max(0, limit - currentContextTokens);
 
     return {
       systemTokens,
@@ -77,7 +87,7 @@
       conversationTokens,
       remainingTokens: remaining,
       totalLimit: limit,
-      usedTokens: actualTotalTokens,
+      usedTokens: currentContextTokens,
       hasContextLimit,
     };
   });
@@ -223,7 +233,7 @@
         >Current Context ({context.length} messages)</span
       >
       <span class="token-info">
-        {formatTokens(tokenUsage.totalTokens)} / {formatTokens(
+        {formatTokens(tokenBreakdown.usedTokens)} / {formatTokens(
           tokenUsage.contextLimit ?? null
         )} tokens
       </span>
