@@ -111,7 +111,7 @@ export async function runLoop(userInput: string) {
                 remainingTokens: null, // Will be calculated in addTokenUsage
             };
             addTokenUsage(tokenUsage);
-            
+
             // Get the cumulative total after adding
             const cumulativeUsage = getTokenUsageUtil();
             await inspectionReporter.tokens(cumulativeUsage.totalTokens, cumulativeUsage.contextLimit ?? null);
@@ -183,7 +183,8 @@ export async function runLoop(userInput: string) {
                     [
                         { label: InspectionEventLabel.Timing, data: `${durationMs.toFixed(2)}ms` },
                         { label: InspectionEventLabel.ToolCalls, data: JSON.stringify({ tool: toolName, args, result }, null, 2) }
-                    ]
+                    ],
+                    requestTokenUsage
                 );
 
                 await updateContext({
