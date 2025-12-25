@@ -36,29 +36,38 @@
 
   // Calculate token breakdown by category
   const tokenBreakdown = $derived.by(() => {
-    // Estimate tokens using 4 characters = 1 token
+    // Estimate tokens using ~4 characters = 1 token (typical for English text)
     const estimateTokens = (text: string) => {
       return Math.ceil(text.length / 4);
     };
 
     // Calculate FIXED tokens (system prompt and tool definitions - always the same)
-    let fixedSystemTokens = 0;
+    let systemTokens = 0;
     for (const msg of context) {
       if (msg.role === "system") {
-        fixedSystemTokens += estimateTokens(msg.content || "");
+        systemTokens += estimateTokens(msg.content || "");
       }
     }
-    const fixedToolDefinitionTokens = estimateTokens(JSON.stringify(toolDefinitions));
+    const toolTokens = estimateTokens(JSON.stringify(toolDefinitions));
     
-    // Use actual token usage from API
+    // Calculate conversation tokens from actual messages (user, assistant, tool responses)
+    let conversationTokens = 0;
+    for (const msg of context) {
+      if (msg.role === "user" || msg.role === "assistant") {
+        if ("content" in msg && msg.content) {
+          conversationTokens += estimateTokens(msg.content);
+        }
+        if ("tool_calls" in msg && msg.tool_calls) {
+          conversationTokens += estimateTokens(JSON.stringify(msg.tool_calls));
+        }
+      } else if (msg.role === "tool") {
+        conversationTokens += estimateTokens(msg.content || "");
+      }
+    }
+
+    // Use actual token usage from API for remaining calculation
     const actualTotalTokens = tokenUsage.totalTokens || 0;
     const limit = tokenUsage.contextLimit || 100000;
-    
-    // Simple calculation: User/Assistant = Total - (SystemPrompt + Tools)
-    const systemTokens = fixedSystemTokens;
-    const toolTokens = fixedToolDefinitionTokens;
-    const conversationTokens = Math.max(0, actualTotalTokens - (systemTokens + toolTokens));
-
     const remaining = tokenUsage.remainingTokens ?? Math.max(0, limit - actualTotalTokens);
     const hasContextLimit = tokenUsage.contextLimit !== null;
 
