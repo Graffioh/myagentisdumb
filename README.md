@@ -48,6 +48,15 @@ const reporter = createHttpInspectionReporter();
 
 Below are some examples of what informations you can send:
 
+#### Simple log
+
+The `log()` method sends simple string messages without structured children.
+
+```ts
+await reporter.log("Full OpenRouter API response: ...");
+await reporter.log("Model message: ...");
+```
+
 #### Structured trace
 
 The `trace()` method sends events with a parent/child structure that will be displayed with expandable reasoning details in the UI. The reasoning label will be highlighted in orange to distinguish it from other content (if provided).
@@ -60,6 +69,23 @@ await reporter.trace(
         { label: InspectionEventLabel.Reasoning, data: reasoning },
         { label: InspectionEventLabel.Content, data: finalContent }
     ]
+);
+```
+
+You can optionally include token usage information that will be displayed as a child node:
+
+```ts
+await reporter.trace(
+    "API request completed",
+    [
+        { label: InspectionEventLabel.Content, data: "..." }
+    ],
+    {
+        promptTokens: 340,
+        modelOutputTokens: 49,
+        totalTokens: 389,
+        modelReasoningTokens: 30
+    }
 );
 ```
 
