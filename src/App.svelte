@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Chat from "./lib/Chat.svelte";
+  import Chat from "./lib/dev/Chat.svelte";
   import InspectionPanel from "./lib/InspectionPanel.svelte";
 
   let chatOpen = $state(false);

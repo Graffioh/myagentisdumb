@@ -56,7 +56,7 @@
       (child) => child.label === InspectionEventLabel.TokenUsage
     )?.data || null
   );
-  
+
   // Extract and calculate total tokens from token usage data for badge display
   // Note: reasoning tokens are excluded as they don't count toward context usage
   const tokenUsageBadge = $derived(() => {
@@ -64,7 +64,7 @@
     // Extract tokens from format like "Prompt: 340 • Model output: 43 • (Extra) Model Reasoning: 24"
     const promptMatch = tokenUsageData.match(/Prompt:\s*(\d+)/);
     const outputMatch = tokenUsageData.match(/Model output:\s*(\d+)/);
-    
+
     if (promptMatch && outputMatch) {
       const prompt = parseInt(promptMatch[1]);
       const output = parseInt(outputMatch[1]);
@@ -99,7 +99,9 @@
           >
         {/if}
         {#if hasTokenUsage && tokenUsageBadge()}
-          <span class="token-usage-badge" title={tokenUsageData || "Token usage"}
+          <span
+            class="token-usage-badge"
+            title={tokenUsageData || "Token usage"}
             >{tokenUsageBadge()} tokens</span
           >
         {/if}

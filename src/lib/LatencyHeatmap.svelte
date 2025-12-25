@@ -45,7 +45,11 @@
   });
 
   // Get border and background colors for intensity (green -> yellow -> red)
-  function getColors(intensity: number): { border: string; hoverBg: string; selectedBg: string } {
+  function getColors(intensity: number): {
+    border: string;
+    hoverBg: string;
+    selectedBg: string;
+  } {
     if (intensity === 0) {
       return {
         border: "rgba(230, 237, 243, 0.3)",

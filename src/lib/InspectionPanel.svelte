@@ -175,7 +175,9 @@
       console.error("Model SSE connection error");
     };
 
-    agentStatusEventSource = new EventSource(INSPECTION_URL + "/inspection/agent-status");
+    agentStatusEventSource = new EventSource(
+      INSPECTION_URL + "/inspection/agent-status"
+    );
 
     agentStatusEventSource.onmessage = (event: MessageEvent) => {
       try {

@@ -174,7 +174,9 @@
         >Current Context ({context.length} messages)</span
       >
       <span class="token-info">
-        {formatTokens(tokenUsage.totalTokens)} / {formatTokens(tokenUsage.contextLimit ?? null)} tokens
+        {formatTokens(tokenUsage.totalTokens)} / {formatTokens(
+          tokenUsage.contextLimit ?? null
+        )} tokens
       </span>
     </div>
     <div class="context-header-right">

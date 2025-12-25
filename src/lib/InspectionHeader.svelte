@@ -11,7 +11,13 @@
     onDeleteAll: () => void;
   }
 
-  let { modelName = "", status = "connecting", agentConnected = false, events, onDeleteAll }: Props = $props();
+  let {
+    modelName = "",
+    status = "connecting",
+    agentConnected = false,
+    events,
+    onDeleteAll,
+  }: Props = $props();
 
   let showConfirmDialog = $state(false);
 
@@ -45,7 +51,15 @@
       clear
     </button>
     <DownloadSnapshot {events} />
-    <div class="pill {status === 'error' ? 'error' : status === 'connecting' ? 'connecting' : agentConnected ? 'connected' : 'idle'}">
+    <div
+      class="pill {status === 'error'
+        ? 'error'
+        : status === 'connecting'
+          ? 'connecting'
+          : agentConnected
+            ? 'connected'
+            : 'idle'}"
+    >
       {#if status === "connecting"}Connecting...{/if}
       {#if status === "error"}Error{/if}
       {#if status === "connected" && agentConnected}Live{/if}
