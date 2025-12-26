@@ -1,6 +1,7 @@
 import { getWeather } from "./weather";
 import { getMovie } from "./film";
 import { runNeofetch } from "./neofetch";
+import { getMeme } from "./meme";
 import type { AgentToolDefinition } from "../../protocol/types";
 
 export const toolDefinitions: AgentToolDefinition[] = [
@@ -49,6 +50,23 @@ export const toolDefinitions: AgentToolDefinition[] = [
           required: []
         }
       }
+    },
+    {
+      type: "function",
+      function: {
+        name: "getMeme",
+        description: "Get a random meme from Reddit. Optionally specify a subreddit to get memes from a specific subreddit.",
+        parameters: {
+          type: "object",
+          properties: {
+            subreddit: {
+              type: "string",
+              description: "Optional subreddit name such as 'dankmemes', 'wholesomememes', 'me_irl', etc. If not provided, returns a random meme from default subreddits."
+            }
+          },
+          required: []
+        }
+      }
     }
   ];
 
@@ -61,5 +79,8 @@ export const toolImplementations = {
     },
     runNeofetch: async () => {
       return await runNeofetch();
+    },
+    getMeme: async ({ subreddit }: { subreddit?: string }) => {
+      return await getMeme(subreddit);
     }
 };

@@ -51,7 +51,9 @@
     
     // Tool definitions tokens are FIXED
     // ~1.5x for schema overhead when sending tool defs to LLM (they convert them to natural language prompt)
-    const toolTokens = Math.ceil(estimateTokens(JSON.stringify(toolDefinitions)) * 1.5);
+    const toolTokens = toolDefinitions.length === 0 
+      ? 0 
+      : Math.ceil(estimateTokens(JSON.stringify(toolDefinitions)) * 1.5);
     
     // Calculate conversation tokens from actual messages (GROWING, not fixed)
     let conversationTokens = 0;

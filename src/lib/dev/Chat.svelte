@@ -107,9 +107,11 @@
 
 <div id="chat">
   <TextArea text={chatText} />
-  {#if isSending}
-    <div class="status">Thinking...</div>
-  {/if}
+  <div class="status-container">
+    {#if isSending}
+      <div class="status">Thinking...</div>
+    {/if}
+  </div>
   <div class="chat-footer">
     <button
       class="delete-context-button"
@@ -162,6 +164,12 @@
 
   .delete-context-button:active {
     background: rgba(248, 81, 73, 0.2);
+  }
+
+  .status-container {
+    min-height: 24px;
+    display: flex;
+    align-items: center;
   }
 
   .status {
