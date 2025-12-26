@@ -34,7 +34,13 @@ let toolClients: Response[] = [];
 let modelClients: Response[] = [];
 let agentStatusClients: Response[] = [];
 
-// Store tool definitions
+// Store current state
+let currentContext: unknown[] = [];
+let currentTokenUsage = {
+  totalTokens: 0,
+  contextLimit: null as number | null,
+  remainingTokens: null as number | null,
+};
 let toolDefinitions: unknown[] = [];
 // Store model name
 let currentModel: string = "";
@@ -108,13 +114,23 @@ app.get("/api/inspection/context", async (req: Request, res: Response) => {
 
   contextClients.push(res);
 
-  res.write("data: []\n\n");
+  res.write(`data: ${JSON.stringify(currentContext)}\n\n`);
 
   req.on("close", () => {
     contextClients = contextClients.filter((client) => client !== res);
     res.end();
     console.log("Context SSE Client disconnected");
   });
+});
+
+// REST GET endpoint to fetch current context
+app.get("/api/inspection/context/current", async (req: Request, res: Response) => {
+  try {
+    res.status(200).json(currentContext);
+  } catch (error) {
+    console.error("[ERROR] Failed to fetch context:", error);
+    res.status(500).json({ error: "Failed to fetch context" });
+  }
 });
 
 // HTTP endpoint for agent to send context updates
@@ -128,6 +144,9 @@ app.post("/api/inspection/context", async (req: Request, res: Response) => {
 
     // Update agent activity timestamp
     lastAgentActivity = Date.now();
+
+    // Store the context
+    currentContext = context;
 
     contextClients.forEach((client) => {
       try {
@@ -154,13 +173,23 @@ app.get("/api/inspection/tokens", async (req: Request, res: Response) => {
 
   tokenClients.push(res);
 
-  res.write("data: {}\n\n");
+  res.write(`data: ${JSON.stringify(currentTokenUsage)}\n\n`);
 
   req.on("close", () => {
     tokenClients = tokenClients.filter((client) => client !== res);
     res.end();
     console.log("Token SSE Client disconnected");
   });
+});
+
+// REST GET endpoint to fetch current token usage
+app.get("/api/inspection/tokens/current", async (req: Request, res: Response) => {
+  try {
+    res.status(200).json(currentTokenUsage);
+  } catch (error) {
+    console.error("[ERROR] Failed to fetch token usage:", error);
+    res.status(500).json({ error: "Failed to fetch token usage" });
+  }
 });
 
 // HTTP endpoint for agent to send token usage updates
@@ -176,6 +205,9 @@ app.post("/api/inspection/tokens", async (req: Request, res: Response) => {
       contextLimit: maxTokens,
       remainingTokens: maxTokens !== null ? maxTokens - currentUsage : null,
     };
+
+    // Store the token usage
+    currentTokenUsage = tokenUsage;
 
     tokenClients.forEach((client) => {
       try {
@@ -209,6 +241,16 @@ app.get("/api/inspection/tools", async (req: Request, res: Response) => {
     res.end();
     console.log("Tool definitions SSE Client disconnected");
   });
+});
+
+// REST GET endpoint to fetch current tool definitions
+app.get("/api/inspection/tools/current", async (req: Request, res: Response) => {
+  try {
+    res.status(200).json(toolDefinitions);
+  } catch (error) {
+    console.error("[ERROR] Failed to fetch tool definitions:", error);
+    res.status(500).json({ error: "Failed to fetch tool definitions" });
+  }
 });
 
 // HTTP endpoint for agent to send tool definitions

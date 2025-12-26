@@ -41,7 +41,7 @@
       return Math.ceil(text.length / 4);
     };
 
-    // Calculate system tokens (FIXED - only counted once, appears in first message)
+    // System prompt tokens are FIXED
     let systemTokens = 0;
     for (const msg of context) {
       if (msg.role === "system") {
@@ -49,12 +49,11 @@
       }
     }
     
-    // Calculate tool tokens (FIXED - tools are sent with every API call but visualized as constant overhead)
-    // Tool definitions include the schema which adds significant overhead beyond just the JSON
-    // Approximate multiplier: ~1.5x for schema overhead
+    // Tool definitions tokens are FIXED
+    // ~1.5x for schema overhead when sending tool defs to LLM (they convert them to natural language prompt)
     const toolTokens = Math.ceil(estimateTokens(JSON.stringify(toolDefinitions)) * 1.5);
     
-    // Calculate conversation tokens from actual messages (GROWING)
+    // Calculate conversation tokens from actual messages (GROWING, not fixed)
     let conversationTokens = 0;
     for (const msg of context) {
       if (msg.role === "user" || msg.role === "assistant") {
@@ -74,11 +73,10 @@
     // Calculate current context size (what would be sent in the next API call)
     const currentContextTokens = systemTokens + toolTokens + conversationTokens;
     
-    // Get limits from API
+    // Get context limits from API
     const limit = tokenUsage.contextLimit || 100000;
     const hasContextLimit = tokenUsage.contextLimit !== null;
     
-    // Remaining is based on current context size, not accumulated usage
     const remaining = Math.max(0, limit - currentContextTokens);
 
     return {
@@ -119,11 +117,14 @@
     e.stopPropagation();
 
     try {
-      const [contextResponse, tokenResponse] = await Promise.all([
-        fetch(AGENT_URL + "/agent/context", {
+      const [contextResponse, tokenResponse, toolsResponse] = await Promise.all([
+        fetch(INSPECTION_URL + "/inspection/context/current", {
           method: "GET",
         }),
-        fetch(AGENT_URL + "/agent/tokens", {
+        fetch(INSPECTION_URL + "/inspection/tokens/current", {
+          method: "GET",
+        }),
+        fetch(INSPECTION_URL + "/inspection/tools/current", {
           method: "GET",
         }),
       ]);
@@ -140,6 +141,13 @@
         tokenUsage = currentTokenUsage;
       } else {
         console.error("Failed to refresh token usage");
+      }
+
+      if (toolsResponse.ok) {
+        const currentTools = await toolsResponse.json();
+        toolDefinitions = currentTools;
+      } else {
+        console.error("Failed to refresh tool definitions");
       }
     } catch (error) {
       console.error("Error refreshing context:", error);

@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import type { AgentRequest, AgentResponse } from "./types";
 import { Request, Response } from "express";
-import { runLoop, clearContext, getContext, getTokenUsage } from "./loop";
+import { runLoop, clearContext } from "./loop";
 
 const app = express();
 
@@ -29,17 +29,6 @@ app.post("/api/agent", async (req: Request<AgentRequest>, res: Response<AgentRes
   }
 });
 
-// Get Agent context endpoint
-app.get("/api/agent/context", async (req: Request, res: Response) => {
-  try {
-    const currentContext = getContext();
-    res.status(200).json(currentContext);
-  } catch (error) {
-    console.error("[ERROR] Failed to get context:", error);
-    res.status(500).send("Failed to get context");
-  }
-});
-
 // Delete Agent context endpoint
 app.delete("/api/agent/context", async (req: Request, res: Response) => {
   try {
@@ -48,28 +37,6 @@ app.delete("/api/agent/context", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("[ERROR] Failed to clear context:", error);
     res.status(500).send("Failed to clear context");
-  }
-});
-
-// Get Agent tools endpoint
-app.get("/api/agent/tools", async (req: Request, res: Response) => {
-  try {
-    const { toolDefinitions } = await import("./tools/base");
-    res.status(200).json(toolDefinitions);
-  } catch (error) {
-    console.error("[ERROR] Failed to get tools:", error);
-    res.status(500).send("Failed to get tools");
-  }
-});
-
-// Get Agent token usage endpoint
-app.get("/api/agent/tokens", async (req: Request, res: Response) => {
-  try {
-    const tokenUsage = getTokenUsage();
-    res.status(200).json(tokenUsage);
-  } catch (error) {
-    console.error("[ERROR] Failed to get token usage:", error);
-    res.status(500).send("Failed to get token usage");
   }
 });
 
