@@ -150,14 +150,19 @@ https://github.com/user-attachments/assets/9d4e250a-2d31-44c0-9e8e-6a1c406af7a2
 
 ### Visual
 
-<img width="1512" height="880" alt="maid-n-screen" src="https://github.com/user-attachments/assets/e4eee168-de7d-4b8e-ac79-47752119e72d" />
+<img width="1512" height="882" alt="new-maid-screen" src="https://github.com/user-attachments/assets/4f95ea99-baa8-4828-b63f-cdf8925168a1" />
+
 
 
 ### Demo
 
 
 
-https://github.com/user-attachments/assets/f2bd3b6d-2693-4654-b7d2-93718bb088eb
+
+https://github.com/user-attachments/assets/ac5c291e-074b-4eb0-91af-44be048219eb
+
+
+
 
 
 
