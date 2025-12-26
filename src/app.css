@@ -46,8 +46,15 @@ button:hover {
   border-color: #ffffff;
 }
 button:focus,
-button:focus-visible {
-  outline: 1px auto #ffffff79;
+button:focus-visible,
+button:active {
+  outline: none;
+}
+
+[role="button"]:focus,
+[role="button"]:focus-visible,
+[role="button"]:active {
+  outline: none;
 }
 
 @media (prefers-color-scheme: light) {
