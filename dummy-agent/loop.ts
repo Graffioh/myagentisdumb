@@ -35,17 +35,6 @@ if (!OPENROUTER_API_KEY) {
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MAX_TOOL_ITERATIONS = 10;
 
-async function handleMaxIterationsReached(): Promise<string> {
-    await inspectionReporter.trace(
-        "Max tool iterations reached; aborting.",
-        [{ label: InspectionEventLabel.Content, data: JSON.stringify(getContextUtil(), null, 2) }]
-    );
-    const fallback = "I'm unable to complete this request due to too many tool calls.";
-    await updateContext({ role: "assistant", content: fallback });
-    await inspectionReporter.latencyEnd("Agent loop aborted (max iterations).");
-    return fallback;
-}
-
 const SYSTEM_PROMPT = `
 # General
 
@@ -88,7 +77,14 @@ export async function runLoop(userInput: string) {
     while (true) {
         iteration++;
         if (iteration > MAX_TOOL_ITERATIONS) {
-            return await handleMaxIterationsReached();
+            await inspectionReporter.trace(
+                "Max tool iterations reached; aborting.",
+                [{ label: InspectionEventLabel.Content, data: JSON.stringify(getContextUtil(), null, 2) }]
+            );
+            const fallback = "I'm unable to complete this request due to too many tool calls.";
+            await updateContext({ role: "assistant", content: fallback });
+            await inspectionReporter.latencyEnd("Agent loop aborted (max iterations).");
+            return fallback;
         }
 
         const currentContext = getContext();
