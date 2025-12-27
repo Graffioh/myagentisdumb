@@ -47,15 +47,19 @@ let currentModel: string = "";
 // Track last agent activity
 let lastAgentActivity: number | null = null;
 const AGENT_TIMEOUT_MS = 10000; // Consider agent disconnected after 10 seconds of inactivity
+let lastBroadcastedStatus: boolean | null = null;
 
-// Server sent events (SSE) Inspection trace endpoint
-app.get("/api/inspection/trace", async (req: Request, res: Response) => {
+// Helper function to initialize SSE response
+function initSSE(res: Response) {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
-
   res.flushHeaders();
+}
 
+// Server sent events (SSE) Inspection trace endpoint
+app.get("/api/inspection/trace", (req: Request, res: Response) => {
+  initSSE(res);
   inspectionClients.push(res);
 
   // Send initial connection message to help Safari detect connection
@@ -69,7 +73,7 @@ app.get("/api/inspection/trace", async (req: Request, res: Response) => {
 });
 
 // HTTP endpoint for agent to send inspection trace events
-app.post("/api/inspection/trace", async (req: Request, res: Response) => {
+app.post("/api/inspection/trace", (req: Request, res: Response) => {
   try {
     const { event } = req.body;
     
@@ -92,7 +96,8 @@ app.post("/api/inspection/trace", async (req: Request, res: Response) => {
     inspectionClients.forEach((client) => {
       try {
         client.write(`data: ${payload}\n\n`);
-      } catch (error) {
+      } catch {
+        try { client.end(); } catch {}
         inspectionClients = inspectionClients.filter((c) => c !== client);
       }
     });
@@ -105,13 +110,8 @@ app.post("/api/inspection/trace", async (req: Request, res: Response) => {
 });
 
 // Server sent events (SSE) Context events endpoint
-app.get("/api/inspection/context", async (req: Request, res: Response) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  res.flushHeaders();
-
+app.get("/api/inspection/context", (req: Request, res: Response) => {
+  initSSE(res);
   contextClients.push(res);
 
   res.write(`data: ${JSON.stringify(currentContext)}\n\n`);
@@ -124,7 +124,7 @@ app.get("/api/inspection/context", async (req: Request, res: Response) => {
 });
 
 // REST GET endpoint to fetch current context
-app.get("/api/inspection/context/current", async (req: Request, res: Response) => {
+app.get("/api/inspection/context/current", (req: Request, res: Response) => {
   try {
     res.status(200).json(currentContext);
   } catch (error) {
@@ -134,7 +134,7 @@ app.get("/api/inspection/context/current", async (req: Request, res: Response) =
 });
 
 // HTTP endpoint for agent to send context updates
-app.post("/api/inspection/context", async (req: Request, res: Response) => {
+app.post("/api/inspection/context", (req: Request, res: Response) => {
   try {
     const { context } = req.body;
     
@@ -151,7 +151,8 @@ app.post("/api/inspection/context", async (req: Request, res: Response) => {
     contextClients.forEach((client) => {
       try {
         client.write(`data: ${JSON.stringify(context)}\n\n`);
-      } catch (error) {
+      } catch {
+        try { client.end(); } catch {}
         contextClients = contextClients.filter((c) => c !== client);
       }
     });
@@ -164,13 +165,8 @@ app.post("/api/inspection/context", async (req: Request, res: Response) => {
 });
 
 // Server sent events (SSE) Token usage endpoint
-app.get("/api/inspection/tokens", async (req: Request, res: Response) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  res.flushHeaders();
-
+app.get("/api/inspection/tokens", (req: Request, res: Response) => {
+  initSSE(res);
   tokenClients.push(res);
 
   res.write(`data: ${JSON.stringify(currentTokenUsage)}\n\n`);
@@ -183,7 +179,7 @@ app.get("/api/inspection/tokens", async (req: Request, res: Response) => {
 });
 
 // REST GET endpoint to fetch current token usage
-app.get("/api/inspection/tokens/current", async (req: Request, res: Response) => {
+app.get("/api/inspection/tokens/current", (req: Request, res: Response) => {
   try {
     res.status(200).json(currentTokenUsage);
   } catch (error) {
@@ -193,9 +189,17 @@ app.get("/api/inspection/tokens/current", async (req: Request, res: Response) =>
 });
 
 // HTTP endpoint for agent to send token usage updates
-app.post("/api/inspection/tokens", async (req: Request, res: Response) => {
+app.post("/api/inspection/tokens", (req: Request, res: Response) => {
   try {
     const { currentUsage, maxTokens } = req.body;
+
+    if (typeof currentUsage !== "number" || (maxTokens !== null && typeof maxTokens !== "number")) {
+      return res.status(400).json({ error: "currentUsage and maxTokens must be numbers (maxTokens may be null)" });
+    }
+
+    if (currentUsage < 0) {
+      return res.status(400).json({ error: "currentUsage must be >= 0" });
+    }
 
     // Update agent activity timestamp
     lastAgentActivity = Date.now();
@@ -203,7 +207,7 @@ app.post("/api/inspection/tokens", async (req: Request, res: Response) => {
     const tokenUsage = {
       totalTokens: currentUsage,
       contextLimit: maxTokens,
-      remainingTokens: maxTokens !== null ? maxTokens - currentUsage : null,
+      remainingTokens: maxTokens !== null ? Math.max(0, maxTokens - currentUsage) : null,
     };
 
     // Store the token usage
@@ -212,7 +216,8 @@ app.post("/api/inspection/tokens", async (req: Request, res: Response) => {
     tokenClients.forEach((client) => {
       try {
         client.write(`data: ${JSON.stringify(tokenUsage)}\n\n`);
-      } catch (error) {
+      } catch {
+        try { client.end(); } catch {}
         tokenClients = tokenClients.filter((c) => c !== client);
       }
     });
@@ -225,13 +230,8 @@ app.post("/api/inspection/tokens", async (req: Request, res: Response) => {
 });
 
 // Server sent events (SSE) Tool definitions endpoint
-app.get("/api/inspection/tools", async (req: Request, res: Response) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  res.flushHeaders();
-
+app.get("/api/inspection/tools", (req: Request, res: Response) => {
+  initSSE(res);
   toolClients.push(res);
 
   res.write(`data: ${JSON.stringify(toolDefinitions)}\n\n`);
@@ -244,7 +244,7 @@ app.get("/api/inspection/tools", async (req: Request, res: Response) => {
 });
 
 // REST GET endpoint to fetch current tool definitions
-app.get("/api/inspection/tools/current", async (req: Request, res: Response) => {
+app.get("/api/inspection/tools/current", (req: Request, res: Response) => {
   try {
     res.status(200).json(toolDefinitions);
   } catch (error) {
@@ -254,7 +254,7 @@ app.get("/api/inspection/tools/current", async (req: Request, res: Response) => 
 });
 
 // HTTP endpoint for agent to send tool definitions
-app.post("/api/inspection/tools", async (req: Request, res: Response) => {
+app.post("/api/inspection/tools", (req: Request, res: Response) => {
   try {
     const { toolDefinitions: tools } = req.body;
     
@@ -270,7 +270,8 @@ app.post("/api/inspection/tools", async (req: Request, res: Response) => {
     toolClients.forEach((client) => {
       try {
         client.write(`data: ${JSON.stringify(toolDefinitions)}\n\n`);
-      } catch (error) {
+      } catch {
+        try { client.end(); } catch {}
         toolClients = toolClients.filter((c) => c !== client);
       }
     });
@@ -283,13 +284,8 @@ app.post("/api/inspection/tools", async (req: Request, res: Response) => {
 });
 
 // Server sent events (SSE) Model name endpoint
-app.get("/api/inspection/model", async (req: Request, res: Response) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  res.flushHeaders();
-
+app.get("/api/inspection/model", (req: Request, res: Response) => {
+  initSSE(res);
   modelClients.push(res);
 
   res.write(`data: ${JSON.stringify({ model: currentModel })}\n\n`);
@@ -302,7 +298,7 @@ app.get("/api/inspection/model", async (req: Request, res: Response) => {
 });
 
 // HTTP endpoint for agent to send model name updates
-app.post("/api/inspection/model", async (req: Request, res: Response) => {
+app.post("/api/inspection/model", (req: Request, res: Response) => {
   try {
     const { model } = req.body;
     
@@ -318,7 +314,8 @@ app.post("/api/inspection/model", async (req: Request, res: Response) => {
     modelClients.forEach((client) => {
       try {
         client.write(`data: ${JSON.stringify({ model: currentModel })}\n\n`);
-      } catch (error) {
+      } catch {
+        try { client.end(); } catch {}
         modelClients = modelClients.filter((c) => c !== client);
       }
     });
@@ -342,20 +339,16 @@ function broadcastAgentStatus() {
   agentStatusClients.forEach((client) => {
     try {
       client.write(`data: ${JSON.stringify(status)}\n\n`);
-    } catch (error) {
+    } catch {
+      try { client.end(); } catch {}
       agentStatusClients = agentStatusClients.filter((c) => c !== client);
     }
   });
 }
 
 // Server sent events (SSE) Agent status endpoint
-app.get("/api/inspection/agent-status", async (req: Request, res: Response) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  res.flushHeaders();
-
+app.get("/api/inspection/agent-status", (req: Request, res: Response) => {
+  initSSE(res);
   agentStatusClients.push(res);
 
   // Send initial status
@@ -369,12 +362,14 @@ app.get("/api/inspection/agent-status", async (req: Request, res: Response) => {
   });
 });
 
-// Periodically check agent connection status and broadcast updates
+// Periodically check agent connection status and broadcast updates only on change
 setInterval(() => {
   const currentStatus = isAgentConnected();
-  // Broadcast status update
-  broadcastAgentStatus();
-}, 2000); // Check every 2 seconds
+  if (currentStatus !== lastBroadcastedStatus) {
+    broadcastAgentStatus();
+    lastBroadcastedStatus = currentStatus;
+  }
+}, 2000);
 
 // Start the server
 app.listen(PORT, HOST, () => {

@@ -22,7 +22,7 @@
 
   // Only compute latencies if loop markers are present
   const hasMarkers = $derived(hasLoopMarkers(events));
-  const latencies = $derived(hasMarkers ? computeLatencies(events) : []);
+  const latencies = $derived<number[]>(hasMarkers ? computeLatencies(events) : []);
   const maxLatency = $derived(
     latencies.length > 0 ? Math.max(...latencies) : 0
   );
@@ -36,11 +36,12 @@
   $effect(() => {
     const count = latencies.length;
     if (count > 0 && barsContainer) {
-      requestAnimationFrame(() => {
+      const id = requestAnimationFrame(() => {
         if (barsContainer) {
           barsContainer.scrollLeft = barsContainer.scrollWidth;
         }
       });
+      return () => cancelAnimationFrame(id);
     }
   });
 
@@ -111,7 +112,7 @@
 {:else if latencies.length === 0}
   <div class="heatmap-empty">No latency data available</div>
 {:else}
-  <div class="heatmap-container">
+  <section class="heatmap-container" aria-label="Latency heatmap">
     <div class="heatmap-header">
       <span class="heatmap-title">Latency Heatmap</span>
       <span class="heatmap-stats">
@@ -129,7 +130,8 @@
         {@const intensity = intensities[index]}
         {@const colors = getColors(intensity)}
         {@const isSelected = selectedIndex === index}
-        <div
+        <button
+          type="button"
           class="heatmap-bar"
           class:selected={isSelected}
           style="border-color: {colors.border}; --hover-bg: {colors.hoverBg}; --selected-bg: {colors.selectedBg}; height: {Math.max(
@@ -137,20 +139,12 @@
             intensity * 50 + 20
           )}px;"
           title="Step {index + 1}: {formatLatency(latency)}"
-          role="button"
-          tabindex="0"
           aria-label="Step {index + 1}, latency {formatLatency(latency)}"
           aria-pressed={isSelected}
           onclick={() => handleSelect(index)}
-          onkeydown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleSelect(index);
-            }
-          }}
         >
           <span class="heatmap-bar-label">{formatLatency(latency)}</span>
-        </div>
+        </button>
       {/each}
     </div>
     <div class="heatmap-legend">
@@ -176,7 +170,7 @@
         <span>High</span>
       </span>
     </div>
-  </div>
+  </section>
 {/if}
 
 <style>
@@ -256,6 +250,8 @@
     background: none;
     border: 1px solid;
     border-bottom: none;
+    padding: 0;
+    font: inherit;
   }
 
   .heatmap-bar:hover:not(.selected) {

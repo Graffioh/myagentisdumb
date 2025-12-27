@@ -5,7 +5,6 @@
     conversationTokens: number;
     remainingTokens: number;
     totalLimit: number;
-    usedTokens: number;
     hasContextLimit: boolean;
   }
 
@@ -22,34 +21,44 @@
     return num.toString();
   }
 
+  const safeTotal = $derived(breakdown.totalLimit > 0 ? breakdown.totalLimit : 1);
+
+  const segmentWidths = $derived({
+    system: Math.max(0, (breakdown.systemTokens / safeTotal) * 100),
+    tools: Math.max(0, (breakdown.toolTokens / safeTotal) * 100),
+    conversation: Math.max(0, (breakdown.conversationTokens / safeTotal) * 100),
+    remaining: breakdown.hasContextLimit
+      ? Math.max(0, (breakdown.remainingTokens / safeTotal) * 100)
+      : 0,
+  });
+
   const remainingDisplay = $derived(
     breakdown.hasContextLimit
       ? formatTokens(breakdown.remainingTokens)
-      : "?"
+      : "No limit"
   );
 </script>
 
 <div class="usage-visualization">
-  <div class="usage-bar">
+  <div class="usage-bar" aria-hidden="true">
     <div
       class="usage-segment system-prompt"
-      style="width: {(breakdown.systemTokens / breakdown.totalLimit) * 100}%"
+      style="width: {segmentWidths.system}%"
       title="System Prompt: {formatTokens(breakdown.systemTokens)} tokens"
     ></div>
     <div
       class="usage-segment tools"
-      style="width: {(breakdown.toolTokens / breakdown.totalLimit) * 100}%"
+      style="width: {segmentWidths.tools}%"
       title="Tools: {formatTokens(breakdown.toolTokens)} tokens"
     ></div>
     <div
       class="usage-segment conversation"
-      style="width: {(breakdown.conversationTokens / breakdown.totalLimit) *
-        100}%"
+      style="width: {segmentWidths.conversation}%"
       title="User/Assistant: {formatTokens(breakdown.conversationTokens)} tokens"
     ></div>
     <div
       class="usage-segment remaining"
-      style="width: {(breakdown.remainingTokens / breakdown.totalLimit) * 100}%"
+      style="width: {segmentWidths.remaining}%"
       title="Remaining: {remainingDisplay} tokens"
     ></div>
   </div>
@@ -99,7 +108,7 @@
     height: 100%;
     transition: all 0.2s ease;
     position: relative;
-    min-width: 1px;
+    min-width: 0;
     border-right: 1px solid rgba(0, 0, 0, 0.3);
   }
 

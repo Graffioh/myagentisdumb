@@ -19,6 +19,7 @@
   let eventSource: EventSource | null = null;
   let modelEventSource: EventSource | null = null;
   let agentStatusEventSource: EventSource | null = null;
+  let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
 
   const INSPECTION_URL =
     import.meta.env.VITE_INSPECTION_URL || "http://localhost:6969/api";
@@ -108,9 +109,14 @@
   function highlightEvent(eventIndex: number) {
     if (eventIndex >= 0 && eventIndex < events.length) {
       highlightedEventId = events[eventIndex].id;
-      // Clear highlight after 5 seconds
-      setTimeout(() => {
+
+      if (highlightTimeout) {
+        clearTimeout(highlightTimeout);
+      }
+
+      highlightTimeout = setTimeout(() => {
         highlightedEventId = null;
+        highlightTimeout = null;
       }, 5000);
     }
   }
@@ -196,6 +202,10 @@
   });
 
   onDestroy(() => {
+    if (highlightTimeout) {
+      clearTimeout(highlightTimeout);
+      highlightTimeout = null;
+    }
     eventSource?.close();
     eventSource = null;
     modelEventSource?.close();

@@ -28,10 +28,27 @@ export function getTokenUsage(): TokenUsage {
     return getTokenUsageUtil();
 }
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY!;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+if (!OPENROUTER_API_KEY) {
+    throw new Error("OPENROUTER_API_KEY environment variable is not set");
+}
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const MAX_TOOL_ITERATIONS = 10;
+
+async function handleMaxIterationsReached(): Promise<string> {
+    await inspectionReporter.trace(
+        "Max tool iterations reached; aborting.",
+        [{ label: InspectionEventLabel.Content, data: JSON.stringify(getContextUtil(), null, 2) }]
+    );
+    const fallback = "I'm unable to complete this request due to too many tool calls.";
+    await updateContext({ role: "assistant", content: fallback });
+    await inspectionReporter.latencyEnd("Agent loop aborted (max iterations).");
+    return fallback;
+}
 
 const SYSTEM_PROMPT = `
+# General
+
 You are a helpful assistant that can answer questions and help with tasks.
 Your response should be concise and to the point.
 
@@ -43,6 +60,14 @@ Follow these rules strictly:
 - Never invent Tool arguments and these arguments MUST be valid JSON objects
 - If unsure, do NOT call tools
 - Keep formatting consistent and clean (do not use <p> or similar if not needed)
+- Show images when received in the response.
+
+## Miscellaneous
+
+When the user request:
+- system informations, fetch using runNeofetch tool
+- a film/anime/tv show, fetch using the getMovie tool
+- a meme, fetch a meme from r/dankmemes.
 `.trim();
 
 export async function runLoop(userInput: string) {
@@ -59,7 +84,13 @@ export async function runLoop(userInput: string) {
 
     await inspectionReporter.latencyStart("Agent is processing the user input...");
 
+    let iteration = 0;
     while (true) {
+        iteration++;
+        if (iteration > MAX_TOOL_ITERATIONS) {
+            return await handleMaxIterationsReached();
+        }
+
         const currentContext = getContext();
         const messages: AgentMessage[] = currentContext;
 
@@ -83,9 +114,14 @@ export async function runLoop(userInput: string) {
             throw new Error(`OpenRouter API error: ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const data = await response.json() as any;
 
         await inspectionReporter.log(`Full OpenRouter API response: ${JSON.stringify(data, null, 2)}`);
+
+        if (!data || !Array.isArray(data.choices) || data.choices.length === 0) {
+            await inspectionReporter.log(`Unexpected OpenRouter response structure: ${JSON.stringify(data, null, 2)}`);
+            throw new Error("OpenRouter API returned no choices");
+        }
 
         // Extract token usage for per-request reporting
         let requestTokenUsage: TokenUsage | null = null;
@@ -117,11 +153,16 @@ export async function runLoop(userInput: string) {
             await inspectionReporter.tokens(cumulativeUsage.totalTokens, cumulativeUsage.contextLimit ?? null);
         }
 
-        const msg = data.choices[0].message;
+        const choice = data.choices[0];
+        const msg = choice.message;
+        if (!msg) {
+            await inspectionReporter.log(`Missing 'message' in OpenRouter choice: ${JSON.stringify(choice, null, 2)}`);
+            throw new Error("OpenRouter API choice missing message");
+        }
 
         await inspectionReporter.log(`Model message: ${JSON.stringify(msg, null, 2)}`);
 
-        const { tool_calls: toolCalls, reasoning } = msg;
+        const { tool_calls: toolCalls, reasoning } = msg as any;
 
         if (toolCalls && toolCalls.length > 0) {
             const toolNames = toolCalls.map((call: AgentToolCall) => call.function.name).join(", ");
@@ -132,15 +173,23 @@ export async function runLoop(userInput: string) {
             // This prevents corrupted messages from being added if the model returns malformed JSON
             const parsedArgs: Record<string, unknown>[] = [];
             for (const call of toolCalls) {
+                const rawArgs = call.function.arguments;
+                if (typeof rawArgs !== "string" || rawArgs.trim().length === 0) {
+                    await inspectionReporter.trace(
+                        `Error: Missing or non-string tool arguments for ${call.function.name}`,
+                        [{ label: InspectionEventLabel.ToolCalls, data: JSON.stringify(call, null, 2) }]
+                    );
+                    throw new Error(`Tool ${call.function.name} called with missing or non-string arguments`);
+                }
                 try {
-                    const args = JSON.parse(call.function.arguments || "{}");
+                    const args = JSON.parse(rawArgs);
                     parsedArgs.push(args);
                 } catch (parseError) {
                     await inspectionReporter.trace(
-                        `Error: Model returned malformed tool arguments for ${call.function.name}: ${call.function.arguments}`,
+                        `Error: Model returned malformed tool arguments for ${call.function.name}: ${rawArgs}`,
                         [{ label: InspectionEventLabel.ToolCalls, data: JSON.stringify(call, null, 2) }]
                     );
-                    throw new Error(`Model returned malformed JSON for tool ${call.function.name} arguments: ${call.function.arguments}`);
+                    throw new Error(`Model returned malformed JSON for tool ${call.function.name} arguments: ${rawArgs}`);
                 }
             }
 
@@ -165,7 +214,7 @@ export async function runLoop(userInput: string) {
             // Call all tools one by one 
             for (let i = 0; i < toolCalls.length; i++) {
                 const call = toolCalls[i];
-                const toolName = call.function.name;
+                const toolName = call.function.name as keyof typeof toolImplementations;
                 const args = parsedArgs[i];
 
                 if (!toolImplementations[toolName]) {
@@ -173,7 +222,7 @@ export async function runLoop(userInput: string) {
                 }
 
                 const startTime = performance.now();
-                const result = await toolImplementations[toolName](args);
+                const result = await toolImplementations[toolName](args as any);
                 const endTime = performance.now();
                 const durationMs = endTime - startTime;
 
@@ -198,7 +247,14 @@ export async function runLoop(userInput: string) {
         }
 
         // No more tool calls, so we can display the final content
-        const finalContent = msg.content ? msg.content : `The agent is confused (ᗒᗣᗕ)`;
+        let finalContent: string;
+        if (typeof msg.content === "string") {
+            finalContent = msg.content;
+        } else if (msg.content == null) {
+            finalContent = "The agent is confused (ᗒᗣᗕ)";
+        } else {
+            finalContent = String(msg.content);
+        }
 
         if (reasoning) {
             await inspectionReporter.trace(

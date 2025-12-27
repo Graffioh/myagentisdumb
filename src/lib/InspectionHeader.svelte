@@ -15,11 +15,31 @@
     modelName = "",
     status = "connecting",
     agentConnected = false,
-    events,
+    events = [],
     onDeleteAll,
   }: Props = $props();
 
   let showConfirmDialog = $state(false);
+
+  const statusClass = $derived(
+    status === "error"
+      ? "error"
+      : status === "connecting"
+        ? "connecting"
+        : agentConnected
+          ? "connected"
+          : "idle"
+  );
+
+  const statusText = $derived(
+    status === "connecting"
+      ? "Connecting..."
+      : status === "error"
+        ? "Error"
+        : agentConnected
+          ? "Live"
+          : "Idle"
+  );
 
   function handleClearClick() {
     showConfirmDialog = true;
@@ -47,23 +67,13 @@
       title="Delete all events"
       aria-label="Delete all events"
       disabled={events.length === 0}
+      type="button"
     >
       clear
     </button>
     <DownloadSnapshot {events} />
-    <div
-      class="pill {status === 'error'
-        ? 'error'
-        : status === 'connecting'
-          ? 'connecting'
-          : agentConnected
-            ? 'connected'
-            : 'idle'}"
-    >
-      {#if status === "connecting"}Connecting...{/if}
-      {#if status === "error"}Error{/if}
-      {#if status === "connected" && agentConnected}Live{/if}
-      {#if status === "connected" && !agentConnected}Idle{/if}
+    <div class="pill {statusClass}" role="status" aria-live="polite">
+      {statusText}
     </div>
   </div>
 </div>

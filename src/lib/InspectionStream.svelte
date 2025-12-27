@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { tick } from "svelte";
   import EventRow from "./EventRow.svelte";
   import type { InspectionEventDisplay } from "../types";
 
@@ -11,42 +10,39 @@
     onToggleWarningMark: (eventId: number) => void;
   }
 
-  let streamElement: HTMLDivElement | null = $state(null);
-  let {
+  let streamElement: HTMLDivElement | null = null;
+  const {
     events,
     highlightedEventId,
     onToggleExpand,
     onRemove,
     onToggleWarningMark,
-  }: Props = $props();
+  } = $props();
 
-  let previousEventCount = $state(0);
+  let previousEventCount = 0;
 
   // Auto-scroll only when new events are added
   $effect(() => {
+    if (!streamElement) return;
+
     const currentCount = events.length;
-    if (currentCount > previousEventCount && streamElement) {
-      tick().then(() => {
-        if (streamElement) {
-          streamElement.scrollTop = streamElement.scrollHeight;
-        }
-      });
+
+    if (currentCount > previousEventCount) {
+      streamElement.scrollTop = streamElement.scrollHeight;
     }
+
     previousEventCount = currentCount;
   });
 
   // Scroll to highlighted event
   $effect(() => {
-    if (highlightedEventId !== null && streamElement) {
-      tick().then(() => {
-        const eventElement = streamElement?.querySelector(
-          `[data-event-id="${highlightedEventId}"]`
-        );
-        if (eventElement) {
-          eventElement.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      });
-    }
+    if (!streamElement || highlightedEventId === null) return;
+
+    const eventElement = streamElement.querySelector<HTMLElement>(
+      `[data-event-id="${highlightedEventId}"]`
+    );
+
+    eventElement?.scrollIntoView({ behavior: "smooth", block: "center" });
   });
 </script>
 

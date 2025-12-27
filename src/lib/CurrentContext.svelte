@@ -20,6 +20,9 @@
   let tokenEventSource: EventSource | null = null;
   let toolEventSource: EventSource | null = null;
 
+  // Estimate tokens using ~4 characters = 1 token (typical for English text)
+  const estimateTokens = (text: string) => Math.ceil(text.length / 4);
+
   // Count tool calls per tool name
   const toolCallCounts = $derived.by(() => {
     const counts: Record<string, number> = {};
@@ -36,10 +39,6 @@
 
   // Calculate token breakdown by category
   const tokenBreakdown = $derived.by(() => {
-    // Estimate tokens using ~4 characters = 1 token (typical for English text)
-    const estimateTokens = (text: string) => {
-      return Math.ceil(text.length / 4);
-    };
 
     // System prompt tokens are FIXED
     let systemTokens = 0;
@@ -48,13 +47,14 @@
         systemTokens += estimateTokens(msg.content || "");
       }
     }
-    
+
     // Tool definitions tokens are FIXED
     // ~1.5x for schema overhead when sending tool defs to LLM (they convert them to natural language prompt)
-    const toolTokens = toolDefinitions.length === 0 
-      ? 0 
-      : Math.ceil(estimateTokens(JSON.stringify(toolDefinitions)) * 1.5);
-    
+    const toolTokens =
+      toolDefinitions.length === 0
+        ? 0
+        : Math.ceil(estimateTokens(JSON.stringify(toolDefinitions)) * 1.5);
+
     // Calculate conversation tokens from actual messages (GROWING, not fixed)
     let conversationTokens = 0;
     for (const msg of context) {
@@ -64,21 +64,25 @@
         }
         if ("tool_calls" in msg && msg.tool_calls) {
           // Tool calls include function name + arguments + formatting overhead
-          conversationTokens += Math.ceil(estimateTokens(JSON.stringify(msg.tool_calls)) * 1.2);
+          conversationTokens += Math.ceil(
+            estimateTokens(JSON.stringify(msg.tool_calls)) * 1.2
+          );
         }
       } else if (msg.role === "tool") {
         // Tool responses also have some formatting overhead
-        conversationTokens += Math.ceil(estimateTokens(msg.content || "") * 1.1);
+        conversationTokens += Math.ceil(
+          estimateTokens(msg.content || "") * 1.1
+        );
       }
     }
 
     // Calculate current context size (what would be sent in the next API call)
     const currentContextTokens = systemTokens + toolTokens + conversationTokens;
-    
+
     // Get context limits from API
     const limit = tokenUsage.contextLimit || 100000;
     const hasContextLimit = tokenUsage.contextLimit !== null;
-    
+
     const remaining = Math.max(0, limit - currentContextTokens);
 
     return {
@@ -92,46 +96,46 @@
     };
   });
 
-  const AGENT_URL =
-    import.meta.env.VITE_AGENT_URL || "http://localhost:3002/api";
   const INSPECTION_URL =
-    import.meta.env.VITE_INSPECTION_URL || "http://localhost:6969/api";
+    import.meta.env.VITE_INSPECTION_URL ?? "http://localhost:6969/api";
 
   async function refreshContext(e: MouseEvent) {
     e.stopPropagation();
 
     try {
-      const [contextResponse, tokenResponse, toolsResponse] = await Promise.all([
-        fetch(INSPECTION_URL + "/inspection/context/current", {
-          method: "GET",
-        }),
-        fetch(INSPECTION_URL + "/inspection/tokens/current", {
-          method: "GET",
-        }),
-        fetch(INSPECTION_URL + "/inspection/tools/current", {
-          method: "GET",
-        }),
-      ]);
+      const [contextResponse, tokenResponse, toolsResponse] = await Promise.all(
+        [
+          fetch(INSPECTION_URL + "/inspection/context/current", {
+            method: "GET",
+          }),
+          fetch(INSPECTION_URL + "/inspection/tokens/current", {
+            method: "GET",
+          }),
+          fetch(INSPECTION_URL + "/inspection/tools/current", {
+            method: "GET",
+          }),
+        ]
+      );
 
       if (contextResponse.ok) {
         const currentContext = await contextResponse.json();
         context = currentContext;
       } else {
-        console.error("Failed to refresh context");
+        console.error("Failed to refresh context", contextResponse.status);
       }
 
       if (tokenResponse.ok) {
         const currentTokenUsage = await tokenResponse.json();
         tokenUsage = currentTokenUsage;
       } else {
-        console.error("Failed to refresh token usage");
+        console.error("Failed to refresh token usage", tokenResponse.status);
       }
 
       if (toolsResponse.ok) {
         const currentTools = await toolsResponse.json();
         toolDefinitions = currentTools;
       } else {
-        console.error("Failed to refresh tool definitions");
+        console.error("Failed to refresh tool definitions", toolsResponse.status);
       }
     } catch (error) {
       console.error("Error refreshing context:", error);
@@ -162,8 +166,8 @@
       }
     };
 
-    contextEventSource.onerror = () => {
-      console.error("Context SSE connection error");
+    contextEventSource.onerror = (e) => {
+      console.error("Context SSE connection error", e);
     };
 
     tokenEventSource = new EventSource(INSPECTION_URL + "/inspection/tokens");
@@ -179,8 +183,8 @@
       }
     };
 
-    tokenEventSource.onerror = () => {
-      console.error("Token SSE connection error");
+    tokenEventSource.onerror = (e) => {
+      console.error("Token SSE connection error", e);
     };
 
     toolEventSource = new EventSource(INSPECTION_URL + "/inspection/tools");
@@ -194,8 +198,8 @@
       }
     };
 
-    toolEventSource.onerror = () => {
-      console.error("Tool definitions SSE connection error");
+    toolEventSource.onerror = (e) => {
+      console.error("Tool definitions SSE connection error", e);
     };
   });
 
@@ -213,12 +217,17 @@
   <div
     class="context-header"
     onclick={() => (contextExpanded = !contextExpanded)}
-    onkeydown={(e) => e.key === "Enter" && (contextExpanded = !contextExpanded)}
+    onkeydown={(e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        contextExpanded = !contextExpanded;
+      }
+    }}
     role="button"
     tabindex="0"
   >
     <div class="context-header-left">
-      <button class="expand-button">
+      <button class="expand-button" type="button">
         <span class="arrow {contextExpanded ? 'expanded' : ''}">▶</span>
       </button>
       <span class="context-title"
@@ -226,13 +235,14 @@
       >
       <span class="token-info">
         {formatTokens(tokenBreakdown.usedTokens)} / {formatTokens(
-          tokenUsage.contextLimit ?? null
+          tokenBreakdown.totalLimit
         )} tokens
       </span>
     </div>
     <div class="context-header-right">
       <button
         class="refresh-context-button"
+        type="button"
         onclick={refreshContext}
         title="Refresh context"
         aria-label="Refresh context"
@@ -246,15 +256,17 @@
       <div class="tabs-header">
         <button
           class="tab-button usage-tab {activeTab === 'usage' ? 'active' : ''}"
+          type="button"
           onclick={(e) => {
             e.stopPropagation();
             activeTab = "usage";
           }}
         >
-          usage
+          estimated usage
         </button>
         <button
           class="tab-button {activeTab === 'context' ? 'active' : ''}"
+          type="button"
           onclick={(e) => {
             e.stopPropagation();
             activeTab = "context";
@@ -264,6 +276,7 @@
         </button>
         <button
           class="tab-button tools-tab {activeTab === 'tools' ? 'active' : ''}"
+          type="button"
           onclick={(e) => {
             e.stopPropagation();
             activeTab = "tools";

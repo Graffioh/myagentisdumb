@@ -51,7 +51,6 @@ export async function updateContext(newMessage: AgentMessage) {
 export async function clearContext(currentModel: string) {
     context = [];
     await inspectionReporter.context([]);
-    await inspectionReporter.log("Context cleared");
     
     const contextLimit = await fetchModelContextLimit(currentModel);
     const resetTokenUsage: TokenUsage = {
@@ -84,7 +83,7 @@ export function addTokenUsage(usage: TokenUsage) {
             ? (lastTokenUsage.modelReasoningTokens ?? 0) + (usage.modelReasoningTokens ?? 0)
             : lastTokenUsage.modelReasoningTokens,
         contextLimit: usage.contextLimit ?? lastTokenUsage.contextLimit,
-        remainingTokens: usage.contextLimit !== null 
+        remainingTokens: usage.contextLimit != null 
             ? usage.contextLimit - (lastTokenUsage.totalTokens + usage.totalTokens)
             : null,
     };

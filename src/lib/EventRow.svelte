@@ -59,15 +59,15 @@
 
   // Extract and calculate total tokens from token usage data for badge display
   // Note: reasoning tokens are excluded as they don't count toward context usage
-  const tokenUsageBadge = $derived(() => {
+  const tokenUsageBadge = $derived.by<string | null>(() => {
     if (!tokenUsageData) return null;
     // Extract tokens from format like "Prompt: 340 • Model output: 43 • (Extra) Model Reasoning: 24"
     const promptMatch = tokenUsageData.match(/Prompt:\s*(\d+)/);
     const outputMatch = tokenUsageData.match(/Model output:\s*(\d+)/);
 
     if (promptMatch && outputMatch) {
-      const prompt = parseInt(promptMatch[1]);
-      const output = parseInt(outputMatch[1]);
+      const prompt = parseInt(promptMatch[1], 10);
+      const output = parseInt(outputMatch[1], 10);
       return (prompt + output).toString();
     }
     return null;
@@ -98,11 +98,11 @@
             >{timingData}</span
           >
         {/if}
-        {#if hasTokenUsage && tokenUsageBadge()}
+        {#if tokenUsageBadge}
           <span
             class="token-usage-badge"
             title={tokenUsageData || "Token usage"}
-            >{tokenUsageBadge()} tokens</span
+            >{tokenUsageBadge} tokens</span
           >
         {/if}
       </div>
