@@ -51,6 +51,12 @@
         (child) => child.label === InspectionEventLabel.TokenUsage
       )
   );
+  const hasError = $derived(
+    hasChildren &&
+      event.inspectionEvent.children?.some(
+        (child) => child.label === InspectionEventLabel.Error
+      )
+  );
   const tokenUsageData = $derived(
     event.inspectionEvent.children?.find(
       (child) => child.label === InspectionEventLabel.TokenUsage
@@ -74,7 +80,7 @@
   });
 </script>
 
-<div class="row" class:highlighted data-event-id={event.id}>
+<div class="row" class:highlighted class:hasError data-event-id={event.id}>
   <div class="ts">{new Date(event.ts).toLocaleTimeString()}</div>
   <div class="data-container">
     {#if multiline}
@@ -165,6 +171,13 @@
     background-color: rgba(230, 237, 243, 0.12);
     border-bottom-color: rgba(230, 237, 243, 0.35);
     border-left: 3px solid rgba(230, 237, 243, 0.5);
+    padding-left: 3px;
+  }
+
+  .row.hasError {
+    background-color: rgba(248, 81, 73, 0.12);
+    border-bottom-color: rgba(248, 81, 73, 0.35);
+    border-left: 3px solid rgba(248, 81, 73, 0.6);
     padding-left: 3px;
   }
 
