@@ -57,6 +57,12 @@
         (child) => child.label === InspectionEventLabel.Error
       )
   );
+  const hasToolCalls = $derived(
+    hasChildren &&
+      event.inspectionEvent.children?.some(
+        (child) => child.label === InspectionEventLabel.ToolCalls
+      )
+  );
   const tokenUsageData = $derived(
     event.inspectionEvent.children?.find(
       (child) => child.label === InspectionEventLabel.TokenUsage
@@ -80,7 +86,7 @@
   });
 </script>
 
-<div class="row" class:highlighted class:hasError data-event-id={event.id}>
+<div class="row" class:highlighted class:hasError class:hasToolCalls data-event-id={event.id}>
   <div class="ts">{new Date(event.ts).toLocaleTimeString()}</div>
   <div class="data-container">
     {#if multiline}
@@ -178,6 +184,13 @@
     background-color: rgba(248, 81, 73, 0.12);
     border-bottom-color: rgba(248, 81, 73, 0.35);
     border-left: 3px solid rgba(248, 81, 73, 0.6);
+    padding-left: 3px;
+  }
+
+  .row.hasToolCalls {
+    background-color: rgba(210, 168, 255, 0.12);
+    border-bottom-color: rgba(210, 168, 255, 0.35);
+    border-left: 3px solid rgba(210, 168, 255, 0.6);
     padding-left: 3px;
   }
 
