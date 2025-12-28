@@ -107,12 +107,15 @@
         [
           fetch(INSPECTION_URL + "/inspection/context/current", {
             method: "GET",
+            cache: "no-store",
           }),
           fetch(INSPECTION_URL + "/inspection/tokens/current", {
             method: "GET",
+            cache: "no-store",
           }),
           fetch(INSPECTION_URL + "/inspection/tools/current", {
             method: "GET",
+            cache: "no-store",
           }),
         ]
       );

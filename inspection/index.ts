@@ -145,6 +145,7 @@ app.get("/api/inspection/context", (req: Request, res: Response) => {
 // REST GET endpoint to fetch current context
 app.get("/api/inspection/context/current", (req: Request, res: Response) => {
   try {
+    res.setHeader("Cache-Control", "no-store");
     res.status(200).json(currentContext);
   } catch (error) {
     console.error("[ERROR] Failed to fetch context:", error);
@@ -200,6 +201,7 @@ app.get("/api/inspection/tokens", (req: Request, res: Response) => {
 // REST GET endpoint to fetch current token usage
 app.get("/api/inspection/tokens/current", (req: Request, res: Response) => {
   try {
+    res.setHeader("Cache-Control", "no-store");
     res.status(200).json(currentTokenUsage);
   } catch (error) {
     console.error("[ERROR] Failed to fetch token usage:", error);
@@ -265,6 +267,7 @@ app.get("/api/inspection/tools", (req: Request, res: Response) => {
 // REST GET endpoint to fetch current tool definitions
 app.get("/api/inspection/tools/current", (req: Request, res: Response) => {
   try {
+    res.setHeader("Cache-Control", "no-store");
     res.status(200).json(toolDefinitions);
   } catch (error) {
     console.error("[ERROR] Failed to fetch tool definitions:", error);
