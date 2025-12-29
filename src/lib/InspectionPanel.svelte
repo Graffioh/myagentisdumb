@@ -5,8 +5,13 @@
   import InspectionStream from "./InspectionStream.svelte";
   import LatencyHeatmap from "./LatencyHeatmap.svelte";
   import type { InspectionEventDisplay } from "../types";
-  import { InspectionEventLabel, type InspectionEvent } from "../../protocol/types";
+  import { InspectionEventLabel, type InspectionEvent, type MaidSnapshot } from "../../protocol/types";
   import { load, save } from "../utils/persistence";
+  import {
+    setSnapshotContext,
+    setSnapshotToolDefinitions,
+    setSnapshotTokenUsage,
+  } from "../utils/inspectionSnapshotState";
 
   let events: InspectionEventDisplay[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");
@@ -96,7 +101,6 @@
       ts: Date.now(),
       data: displayData,
       expanded: false,
-      warningMarked: false,
       inspectionEvent,
       invocationId: inspectionEvent.invocationId,
     };
@@ -133,17 +137,35 @@
     save("events", events);
   }
 
-  function toggleWarningMark(eventId: number) {
-    events = events.map((e) =>
-      e.id === eventId ? { ...e, warningMarked: !e.warningMarked } : e
-    );
-    save("events", events);
-  }
-
   function deleteAllEvents() {
     events = [];
     eventId = 0;
     highlightedEventId = null;
+    save("events", events);
+    save("eventId", eventId);
+  }
+
+  function handleImport(snapshot: MaidSnapshot) {
+    setSnapshotContext(snapshot.context || []);
+    setSnapshotToolDefinitions(snapshot.tools || []);
+    setSnapshotTokenUsage(
+      snapshot.tokenUsage || { totalTokens: 0, contextLimit: null, remainingTokens: null }
+    );
+
+    const importedEvents: InspectionEventDisplay[] = snapshot.events.map((e, i) => ({
+      id: eventId + i,
+      ts: e.ts,
+      data: e.data,
+      expanded: false,
+      inspectionEvent: e.inspectionEvent,
+      invocationId: e.inspectionEvent.invocationId,
+    }));
+
+    eventId += importedEvents.length;
+    events = importedEvents;
+    modelName = snapshot.model || "";
+    highlightedEventId = null;
+
     save("events", events);
     save("eventId", eventId);
   }
@@ -271,6 +293,7 @@
     {events}
     {errorRate}
     onDeleteAll={deleteAllEvents}
+    onImport={handleImport}
   />
 
   {#if lastError}
@@ -285,7 +308,6 @@
     onToggleExpand={toggleExpand}
     onRemove={removeEventRow}
     onRemoveGroup={removeInvocationGroup}
-    onToggleWarningMark={toggleWarningMark}
   />
 
   <CurrentContext />

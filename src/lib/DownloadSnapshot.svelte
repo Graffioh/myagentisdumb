@@ -5,6 +5,7 @@
     ContextMessage,
     AgentToolDefinition,
     TokenUsage,
+    MaidSnapshot,
   } from "../../protocol/types";
   import { getSnapshotState } from "../utils/inspectionSnapshotState";
 
@@ -15,6 +16,7 @@
 
   let { events, modelName }: Props = $props();
   let isLoading = $state(false);
+  let showMenu = $state(false);
 
   function formatChild(
     child: InspectionEventChild,
@@ -26,11 +28,8 @@
   function formatEvent(event: InspectionEventDisplay): string {
     const timestamp = new Date(event.ts).toLocaleString();
     const displayText = event.inspectionEvent.message || event.data;
-    const warningMarkPrefix = event.warningMarked
-      ? "[⚠ WARNING, STRANGE BEHAVIOR] "
-      : "";
 
-    let result = `[${timestamp}] ${warningMarkPrefix}${displayText}`;
+    let result = `[${timestamp}] ${displayText}`;
 
     if (
       event.inspectionEvent.children &&
@@ -152,38 +151,108 @@
     return sections.join("\n");
   }
 
-  async function downloadInspectionSnapshot() {
+  function buildJsonSnapshot(data: {
+    context: ContextMessage[];
+    tools: AgentToolDefinition[];
+    tokenUsage: TokenUsage;
+  }): MaidSnapshot {
+    return {
+      version: "1.0",
+      exportedAt: new Date().toISOString(),
+      model: modelName,
+      tokenUsage: data.tokenUsage,
+      tools: data.tools,
+      context: data.context,
+      events: events.map((e) => ({
+        ts: e.ts,
+        data: e.data,
+        inspectionEvent: e.inspectionEvent,
+      })),
+    };
+  }
+
+  function downloadFile(content: string, filename: string, type: string) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function downloadTxt() {
     isLoading = true;
+    showMenu = false;
     try {
       const data = getCurrentData();
       const content = buildInspectionSnapshot(data);
-      const blob = new Blob([content], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "maid-inspection-snap.txt";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      downloadFile(content, "maid-inspection-snap.txt", "text/plain");
     } catch (error) {
       console.error("Failed to generate snapshot:", error);
     } finally {
       isLoading = false;
     }
   }
+
+  async function downloadJson() {
+    isLoading = true;
+    showMenu = false;
+    try {
+      const data = getCurrentData();
+      const snapshot = buildJsonSnapshot(data);
+      const content = JSON.stringify(snapshot, null, 2);
+      downloadFile(content, "maid-snapshot.json", "application/json");
+    } catch (error) {
+      console.error("Failed to generate JSON snapshot:", error);
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  function toggleMenu() {
+    showMenu = !showMenu;
+  }
+
+  function handleClickOutside(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (!target.closest(".download-container")) {
+      showMenu = false;
+    }
+  }
 </script>
 
-<button
-  class="download-button"
-  onclick={downloadInspectionSnapshot}
-  title="Download full inspection snapshot"
-  disabled={isLoading}
->
-  {isLoading ? "loading..." : "txt snapshot ⬇"}
-</button>
+<svelte:window onclick={handleClickOutside} />
+
+<div class="download-container">
+  <button
+    class="download-button"
+    onclick={toggleMenu}
+    title="Download snapshot"
+    disabled={isLoading}
+  >
+    {isLoading ? "loading..." : "export ⬇"}
+  </button>
+
+  {#if showMenu}
+    <div class="dropdown-menu">
+      <button class="menu-item" onclick={downloadJson}>
+        JSON (importable)
+      </button>
+      <button class="menu-item" onclick={downloadTxt}>
+        TXT (human readable)
+      </button>
+    </div>
+  {/if}
+</div>
 
 <style>
+  .download-container {
+    position: relative;
+  }
+
   .download-button {
     background: none;
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -211,5 +280,39 @@
   .download-button:disabled {
     opacity: 0.6;
     cursor: wait;
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: #1c1c1c;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    overflow: hidden;
+    z-index: 100;
+    min-width: 150px;
+  }
+
+  .menu-item {
+    width: 100%;
+    background: none;
+    border: none;
+    color: #c9d1d9;
+    font-size: 13px;
+    padding: 8px 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e6edf3;
+  }
+
+  .menu-item:active {
+    background: rgba(255, 255, 255, 0.12);
   }
 </style>

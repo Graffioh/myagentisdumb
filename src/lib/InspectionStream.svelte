@@ -15,10 +15,9 @@
     onToggleExpand,
     onRemove,
     onRemoveGroup,
-    onToggleWarningMark,
   } = $props();
 
-  const parentEventHandlers = $derived({ onToggleExpand, onRemove, onRemoveGroup, onToggleWarningMark });
+  const parentEventHandlers = $derived({ onToggleExpand, onRemove, onRemoveGroup });
 
   let previousEventCount = 0;
 

@@ -1,7 +1,9 @@
 <script lang="ts">
   import DownloadSnapshot from "./DownloadSnapshot.svelte";
+  import ImportSnapshot from "./ImportSnapshot.svelte";
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import type { InspectionEventDisplay } from "../types";
+  import type { MaidSnapshot } from "../../protocol/types";
 
   interface Props {
     modelName: string;
@@ -10,6 +12,7 @@
     events: InspectionEventDisplay[];
     errorRate: number;
     onDeleteAll: () => void;
+    onImport: (snapshot: MaidSnapshot) => void;
   }
 
   let {
@@ -19,6 +22,7 @@
     events = [],
     errorRate = 0,
     onDeleteAll,
+    onImport,
   }: Props = $props();
 
   let showConfirmDialog = $state(false);
@@ -73,6 +77,7 @@
     >
       clear
     </button>
+    <ImportSnapshot {onImport} />
     <DownloadSnapshot {events} {modelName} />
     <div 
       class="error-rate-pill" 

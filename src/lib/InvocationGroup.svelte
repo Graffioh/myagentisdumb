@@ -19,7 +19,6 @@
     onToggleExpand,
     onRemove,
     onRemoveGroup,
-    onToggleWarningMark,
   }: {
     group: InvocationGroupData;
     isExpanded: boolean;
@@ -29,7 +28,6 @@
     onToggleExpand: (eventId: number) => void;
     onRemove: (eventId: number) => void;
     onRemoveGroup: (invocationId: string) => void;
-    onToggleWarningMark: (eventId: number) => void;
   } = $props();
 
   function formatDuration(startTs: number, endTs: number): string {
@@ -92,7 +90,6 @@
           highlighted={highlightedEventId === e.id}
           {onToggleExpand}
           {onRemove}
-          {onToggleWarningMark}
         />
       {/each}
     </div>

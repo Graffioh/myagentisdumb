@@ -87,3 +87,23 @@ export type InspectionEvent = {
   children?: InspectionEventChild[];
   invocationId?: string;
 };
+
+/**
+ * MAID Snapshot format for import/export
+ * This is the standard format for sharing inspection data
+ */
+export type MaidSnapshotEvent = {
+  ts: number;
+  data: string;
+  inspectionEvent: InspectionEvent;
+};
+
+export type MaidSnapshot = {
+  version: "1.0";
+  exportedAt: string;
+  model: string;
+  tokenUsage: TokenUsage;
+  tools: AgentToolDefinition[];
+  context: ContextMessage[];
+  events: MaidSnapshotEvent[];
+};
