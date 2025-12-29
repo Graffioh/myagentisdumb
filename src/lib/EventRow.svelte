@@ -133,7 +133,9 @@
                         ? 'token-usage-label'
                         : child.label === InspectionEventLabel.ToolCalls
                           ? 'tool-calls-label'
-                          : ''}"
+                          : child.label === InspectionEventLabel.Error
+                            ? 'error-label'
+                            : ''}"
                 >
                   {child.label}
                 </div>
@@ -383,6 +385,10 @@
 
   .child-label.tool-calls-label {
     color: #d2a8ff;
+  }
+
+  .child-label.error-label {
+    color: #f85149;
   }
 
   .child-data {
