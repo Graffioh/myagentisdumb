@@ -4,6 +4,7 @@
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import type { InspectionEventDisplay } from "../types";
   import type { MaidSnapshot } from "../../protocol/types";
+  import type { ViewMode } from "../utils/snapshot.svelte";
 
   interface Props {
     modelName: string;
@@ -11,8 +12,10 @@
     agentConnected: boolean;
     events: InspectionEventDisplay[];
     errorRate: number;
+    viewMode: ViewMode;
     onDeleteAll: () => void;
     onImport: (snapshot: MaidSnapshot) => void;
+    onSwitchToRealtime: () => void;
   }
 
   let {
@@ -21,8 +24,10 @@
     agentConnected = false,
     events = [],
     errorRate = 0,
+    viewMode = "realtime",
     onDeleteAll,
     onImport,
+    onSwitchToRealtime,
   }: Props = $props();
 
   let showConfirmDialog = $state(false);
@@ -86,9 +91,19 @@
     >
       {errorRate.toFixed(1)}% err
     </div>
-    <div class="pill {statusClass}" role="status" aria-live="polite">
-      {statusText}
-    </div>
+    {#if viewMode === "realtime"}
+      <div class="pill {statusClass}" role="status" aria-live="polite">
+        {statusText}
+      </div>
+    {:else}
+      <button
+        class="pill snapshot"
+        onclick={onSwitchToRealtime}
+        title="Viewing imported snapshot. Click to switch to real-time."
+      >
+        Snapshot
+      </button>
+    {/if}
   </div>
 </div>
 
@@ -156,6 +171,16 @@
   .pill.error {
     border-color: rgba(248, 81, 73, 0.7);
     color: #ff7b72;
+  }
+  .pill.snapshot {
+    border-color: rgba(255, 225, 73, 0.7);
+    color: #ffe2a8;
+    background: rgba(255, 242, 143, 0.15);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .pill.snapshot:hover {
+    background: rgba(255, 242, 143, 0.25);
   }
 
   .error-rate-pill {

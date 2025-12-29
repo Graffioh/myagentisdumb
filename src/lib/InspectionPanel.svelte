@@ -7,13 +7,7 @@
   import type { InspectionEventDisplay } from "../types";
   import { InspectionEventLabel, type InspectionEvent, type MaidSnapshot } from "../../protocol/types";
   import { load, save } from "../utils/persistence";
-  import {
-    setSnapshotContext,
-    setSnapshotToolDefinitions,
-    setSnapshotTokenUsage,
-    setSnapshotEvents,
-    setSnapshotModelName,
-  } from "../utils/snapshot";
+  import { snapshot } from "../utils/snapshot.svelte";
 
   let events: InspectionEventDisplay[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");
@@ -23,7 +17,7 @@
   let modelName = $state<string>("");
   let highlightedEventId = $state<number | null>(null);
 
-  let eventSource: EventSource | null = null;
+  let traceEventSource: EventSource | null = null;
   let modelEventSource: EventSource | null = null;
   let agentStatusEventSource: EventSource | null = null;
   let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -111,7 +105,7 @@
     events = next.length > 300 ? next.slice(next.length - 300) : next;
     save("events", events);
     save("eventId", eventId);
-    setSnapshotEvents(events);
+    snapshot.events = events;
   }
 
   function toggleExpand(eventId: number) {
@@ -119,7 +113,7 @@
       e.id === eventId ? { ...e, expanded: !e.expanded } : e
     );
     save("events", events);
-    setSnapshotEvents(events);
+    snapshot.events = events;
   }
 
   function removeEventRow(eventId: number) {
@@ -128,7 +122,7 @@
       highlightedEventId = null;
     }
     save("events", events);
-    setSnapshotEvents(events);
+    snapshot.events = events;
   }
 
   function removeInvocationGroup(invocationId: string) {
@@ -140,7 +134,7 @@
       highlightedEventId = null;
     }
     save("events", events);
-    setSnapshotEvents(events);
+    snapshot.events = events;
   }
 
   function deleteAllEvents() {
@@ -149,19 +143,13 @@
     highlightedEventId = null;
     save("events", events);
     save("eventId", eventId);
-    setSnapshotEvents(events);
+    snapshot.events = events;
   }
 
-  function handleImport(snapshot: MaidSnapshot) {
-    console.log("Importing snapshot:\n", snapshot);
+  function handleImport(importedSnapshot: MaidSnapshot) {
+    console.log("Importing snapshot:\n", importedSnapshot);
 
-    setSnapshotContext(snapshot.context || []);
-    setSnapshotToolDefinitions(snapshot.tools || []);
-    setSnapshotTokenUsage(
-      snapshot.tokenUsage || { totalTokens: 0, contextLimit: null, remainingTokens: null }
-    );
-
-    const importedEvents: InspectionEventDisplay[] = snapshot.events.map((e, i) => ({
+    const importedEvents: InspectionEventDisplay[] = importedSnapshot.events.map((e, i) => ({
       id: eventId + i,
       ts: e.ts,
       data: e.data,
@@ -172,13 +160,22 @@
 
     eventId += importedEvents.length;
     events = importedEvents;
-    modelName = snapshot.model || "";
-    setSnapshotModelName(modelName);
+    modelName = importedSnapshot.model || "";
     highlightedEventId = null;
 
     save("events", events);
     save("eventId", eventId);
-    setSnapshotEvents(events);
+
+    snapshot.events = events;
+    snapshot.modelName = modelName;
+    snapshot.context = importedSnapshot.context || [];
+    snapshot.toolDefinitions = importedSnapshot.tools || [];
+    snapshot.tokenUsage = importedSnapshot.tokenUsage || { totalTokens: 0, contextLimit: null, remainingTokens: null };
+    snapshot.viewMode = "snapshot";
+  }
+
+  function switchToRealtime() {
+    snapshot.switchToRealtime();
   }
 
   function highlightEvent(eventIndex: number) {
@@ -207,25 +204,27 @@
           ? storedEvents.slice(storedEvents.length - 300)
           : storedEvents;
       events = cappedEvents;
-      setSnapshotEvents(events);
+      snapshot.events = events;
 
       const maxId = cappedEvents.reduce((m, e) => Math.max(m, e.id), 0);
       eventId = Math.max(storedEventId, maxId + 1);
     }
 
-    eventSource = new EventSource(INSPECTION_URL + "/inspection/trace");
+    traceEventSource = new EventSource(INSPECTION_URL + "/inspection/trace");
 
-    eventSource.onopen = () => {
+    traceEventSource.onopen = () => {
       status = "connected";
       lastError = null;
     };
 
-    eventSource.onmessage = (event: MessageEvent) => {
+    traceEventSource.onmessage = (event: MessageEvent) => {
       // Safari may not fire onopen reliably, so mark as connected on first message
       if (status === "connecting") {
         status = "connected";
         lastError = null;
       }
+
+      if (snapshot.viewMode === "snapshot") return;
 
       const data = String(event.data ?? "");
       // Filter out the initial connection message
@@ -241,7 +240,7 @@
       pushEvent(data);
     };
 
-    eventSource.onerror = () => {
+    traceEventSource.onerror = () => {
       status = "error";
       lastError = "SSE connection error";
     };
@@ -249,11 +248,12 @@
     modelEventSource = new EventSource(INSPECTION_URL + "/inspection/model");
 
     modelEventSource.onmessage = (event: MessageEvent) => {
+      if (snapshot.viewMode === "snapshot") return;
       try {
         const data = JSON.parse(event.data);
         if (data.model !== undefined) {
           modelName = data.model;
-          setSnapshotModelName(modelName);
+          snapshot.modelName = modelName;
         }
       } catch (e) {
         console.error("Failed to parse model data:", e);
@@ -289,8 +289,8 @@
       clearTimeout(highlightTimeout);
       highlightTimeout = null;
     }
-    eventSource?.close();
-    eventSource = null;
+    traceEventSource?.close();
+    traceEventSource = null;
     modelEventSource?.close();
     modelEventSource = null;
     agentStatusEventSource?.close();
@@ -305,8 +305,10 @@
     {agentConnected}
     {events}
     {errorRate}
+    viewMode={snapshot.viewMode}
     onDeleteAll={deleteAllEvents}
     onImport={handleImport}
+    onSwitchToRealtime={switchToRealtime}
   />
 
   {#if lastError}

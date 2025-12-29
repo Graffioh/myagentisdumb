@@ -1,29 +1,22 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import ContextUsageBar from "./ContextUsageBar.svelte";
-  import {
-    setSnapshotContext,
-    setSnapshotToolDefinitions,
-    setSnapshotTokenUsage,
-  } from "../utils/snapshot";
+  import { snapshot } from "../utils/snapshot.svelte";
   import type {
     AgentToolDefinition,
     ContextMessage,
   } from "../../protocol/types";
   import type { TokenUsage } from "../../protocol/types";
 
-  let context: ContextMessage[] = $state([]);
-  let tokenUsage: TokenUsage = $state({
-    totalTokens: 0,
-    contextLimit: null,
-    remainingTokens: null,
-  });
   let contextExpanded = $state(false);
   let activeTab: "context" | "tools" | "usage" = $state("usage");
-  let toolDefinitions: AgentToolDefinition[] = $state([]);
   let contextEventSource: EventSource | null = null;
   let tokenEventSource: EventSource | null = null;
   let toolEventSource: EventSource | null = null;
+
+  const context = $derived(snapshot.context);
+  const toolDefinitions = $derived(snapshot.toolDefinitions);
+  const tokenUsage = $derived(snapshot.tokenUsage);
 
   // Estimate tokens using ~4 characters = 1 token (typical for English text)
   const estimateTokens = (text: string) => Math.ceil(text.length / 4);
@@ -127,24 +120,21 @@
 
       if (contextResponse.ok) {
         const currentContext = await contextResponse.json();
-        context = currentContext;
-        setSnapshotContext(context);
+        snapshot.context = currentContext;
       } else {
         console.error("Failed to refresh context", contextResponse.status);
       }
 
       if (tokenResponse.ok) {
         const currentTokenUsage = await tokenResponse.json();
-        tokenUsage = currentTokenUsage;
-        setSnapshotTokenUsage(tokenUsage);
+        snapshot.tokenUsage = currentTokenUsage;
       } else {
         console.error("Failed to refresh token usage", tokenResponse.status);
       }
 
       if (toolsResponse.ok) {
         const currentTools = await toolsResponse.json();
-        toolDefinitions = currentTools;
-        setSnapshotToolDefinitions(toolDefinitions);
+        snapshot.toolDefinitions = currentTools;
       } else {
         console.error("Failed to refresh tool definitions", toolsResponse.status);
       }
@@ -169,10 +159,10 @@
     );
 
     contextEventSource.onmessage = (event: MessageEvent) => {
+      if (snapshot.viewMode === "snapshot") return;
       try {
         const newContext = JSON.parse(event.data);
-        context = newContext;
-        setSnapshotContext(context);
+        snapshot.context = newContext;
       } catch (e) {
         console.error("Failed to parse context data:", e);
       }
@@ -185,11 +175,11 @@
     tokenEventSource = new EventSource(INSPECTION_URL + "/inspection/tokens");
 
     tokenEventSource.onmessage = (event: MessageEvent) => {
+      if (snapshot.viewMode === "snapshot") return;
       try {
         const data = JSON.parse(event.data);
         if (data.totalTokens !== undefined) {
-          tokenUsage = data;
-          setSnapshotTokenUsage(tokenUsage);
+          snapshot.tokenUsage = data;
         }
       } catch (e) {
         console.error("Failed to parse token data:", e);
@@ -203,10 +193,10 @@
     toolEventSource = new EventSource(INSPECTION_URL + "/inspection/tools");
 
     toolEventSource.onmessage = (event: MessageEvent) => {
+      if (snapshot.viewMode === "snapshot") return;
       try {
         const tools = JSON.parse(event.data);
-        toolDefinitions = tools;
-        setSnapshotToolDefinitions(toolDefinitions);
+        snapshot.toolDefinitions = tools;
       } catch (e) {
         console.error("Failed to parse tool definitions data:", e);
       }
@@ -231,89 +221,71 @@
   <div
     class="context-header"
     onclick={() => (contextExpanded = !contextExpanded)}
-    onkeydown={(e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        contextExpanded = !contextExpanded;
-      }
-    }}
+    onkeydown={(e) => e.key === "Enter" && (contextExpanded = !contextExpanded)}
     role="button"
     tabindex="0"
   >
-    <div class="context-header-left">
-      <button class="expand-button" type="button">
-        <span class="arrow {contextExpanded ? 'expanded' : ''}">▶</span>
+    <div class="context-title-group">
+      <button class="expand-button">
+        <span class="arrow" class:expanded={contextExpanded}>▶</span>
       </button>
-      <span class="context-title"
-        >Current Context ({context.length} messages)</span
-      >
-      <span class="token-info">
-        {formatTokens(tokenBreakdown.usedTokens)} / {formatTokens(
+      <span class="context-title">Context</span>
+      <span class="token-info"
+        >{formatTokens(tokenBreakdown.usedTokens)} / {formatTokens(
           tokenBreakdown.totalLimit
-        )} tokens
-      </span>
-    </div>
-    <div class="context-header-right">
-      <button
-        class="refresh-context-button"
-        type="button"
-        onclick={refreshContext}
-        title="Refresh context"
-        aria-label="Refresh context"
+        )} tokens</span
       >
-        ↺
-      </button>
     </div>
+    <button
+      class="refresh-context-button"
+      onclick={refreshContext}
+      title="Refresh context"
+    >
+      ↻
+    </button>
   </div>
+
   {#if contextExpanded}
     <div class="tabs-container">
       <div class="tabs-header">
         <button
-          class="tab-button usage-tab {activeTab === 'usage' ? 'active' : ''}"
-          type="button"
-          onclick={(e) => {
-            e.stopPropagation();
-            activeTab = "usage";
-          }}
+          class="tab-button usage-tab"
+          class:active={activeTab === "usage"}
+          onclick={() => (activeTab = "usage")}
         >
-          estimated usage
+          usage
         </button>
         <button
-          class="tab-button {activeTab === 'context' ? 'active' : ''}"
-          type="button"
-          onclick={(e) => {
-            e.stopPropagation();
-            activeTab = "context";
-          }}
+          class="tab-button"
+          class:active={activeTab === "context"}
+          onclick={() => (activeTab = "context")}
         >
-          messages
+          messages ({context.length})
         </button>
         <button
-          class="tab-button tools-tab {activeTab === 'tools' ? 'active' : ''}"
-          type="button"
-          onclick={(e) => {
-            e.stopPropagation();
-            activeTab = "tools";
-          }}
+          class="tab-button tools-tab"
+          class:active={activeTab === "tools"}
+          onclick={() => (activeTab = "tools")}
         >
-          tools
+          tools ({toolDefinitions.length})
         </button>
       </div>
+
       <div class="context-content">
         {#if activeTab === "usage"}
           <ContextUsageBar breakdown={tokenBreakdown} />
         {:else if activeTab === "context"}
           {#if context.length === 0}
-            <div class="empty-context">No messages in context yet.</div>
+            <p class="empty-context">No messages in context yet.</p>
           {:else}
-            {#each context as ctx, idx (idx)}
+            {#each context as msg}
               <div class="context-message">
-                <div class="context-role {ctx.role}">{ctx.role}</div>
+                <span class="context-role {msg.role}">{msg.role}</span>
                 <div class="context-text">
-                  {#if "tool_calls" in ctx && ctx.tool_calls}
-                    <pre>{JSON.stringify(ctx.tool_calls, null, 2)}</pre>
-                  {:else if "content" in ctx && ctx.content}
-                    <pre>{ctx.content}</pre>
+                  {#if "tool_calls" in msg && msg.tool_calls}
+                    <pre>{JSON.stringify(msg.tool_calls, null, 2)}</pre>
+                  {:else if "content" in msg && msg.content}
+                    <pre>{msg.content}</pre>
                   {:else}
                     <pre>(empty)</pre>
                   {/if}
@@ -323,19 +295,20 @@
           {/if}
         {:else if activeTab === "tools"}
           {#if toolDefinitions.length === 0}
-            <div class="empty-context">No tool definition available.</div>
+            <p class="empty-context">No tools defined.</p>
           {:else}
-            {#each toolDefinitions as tool, idx (idx)}
+            {#each toolDefinitions as tool}
               <div class="tool-definition">
                 <div class="tool-name-container">
-                  <div class="tool-name">{tool.function.name}</div>
+                  <span class="tool-name">{tool.function.name}</span>
                   {#if toolCallCounts[tool.function.name]}
-                    <span
-                      class="tool-call-count"
-                      title="Number of times this tool has been called"
+                    <span class="tool-call-count"
+                      >{toolCallCounts[tool.function.name]} call{toolCallCounts[
+                        tool.function.name
+                      ] > 1
+                        ? "s"
+                        : ""}</span
                     >
-                      ({toolCallCounts[tool.function.name]} calls)
-                    </span>
                   {/if}
                 </div>
                 <div class="tool-description">{tool.function.description}</div>
@@ -356,7 +329,7 @@
 <style>
   .context-section {
     border-top: 1px solid rgba(214, 214, 214, 0.224);
-    background: rgba(255, 0, 0, 0.02);
+    background: rgba(255, 255, 255, 0.02);
   }
 
   .context-header {
@@ -365,20 +338,15 @@
     justify-content: space-between;
     padding: 10px 12px;
     cursor: pointer;
-    transition: background 0.2s;
+    user-select: none;
+    transition: background 0.15s;
   }
 
   .context-header:hover {
-    border-top: 0.5px solid rgba(255, 255, 255, 0.342);
+    background: rgba(255, 255, 255, 0.03);
   }
 
-  .context-header-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .context-header-right {
+  .context-title-group {
     display: flex;
     align-items: center;
     gap: 8px;

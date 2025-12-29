@@ -7,7 +7,7 @@
     TokenUsage,
     MaidSnapshot,
   } from "../../protocol/types";
-  import { getSnapshotState } from "../utils/snapshot";
+  import { snapshot } from "../utils/snapshot.svelte";
 
 
   let isLoading = $state(false);
@@ -86,8 +86,13 @@
     events: InspectionEventDisplay[];
     modelName: string;
   } {
-    // Mirrors the *in-memory* state from the UI.
-    return getSnapshotState();
+    return {
+      context: snapshot.context,
+      tools: snapshot.toolDefinitions,
+      tokenUsage: snapshot.tokenUsage,
+      events: snapshot.events,
+      modelName: snapshot.modelName,
+    };
   }
 
   function buildInspectionSnapshot(data: {

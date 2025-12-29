@@ -12,11 +12,18 @@
   function validateSnapshot(data: unknown): data is MaidSnapshot {
     if (!data || typeof data !== "object") return false;
     const obj = data as Record<string, unknown>;
-    
+
     if (obj.version !== "1.0") return false;
     if (typeof obj.exportedAt !== "string") return false;
     if (!Array.isArray(obj.events)) return false;
-    
+    if (!Array.isArray(obj.context)) return false;
+    if (!Array.isArray(obj.tools)) return false;
+
+    // Validate tokenUsage structure (but allow optional fields)
+    const tokenUsage = obj.tokenUsage;
+    if (!tokenUsage || typeof tokenUsage !== "object") return false;
+    if (typeof (tokenUsage as Record<string, unknown>).totalTokens !== "number") return false;
+
     return true;
   }
 
@@ -36,14 +43,6 @@
         error = "Invalid snapshot format. Expected MAID Snapshot v1.0";
         return;
       }
-
-      /*
-      setSnapshotContext(data.context || []);
-      setSnapshotToolDefinitions(data.tools || []);
-      setSnapshotTokenUsage(
-        data.tokenUsage || { totalTokens: 0, contextLimit: null, remainingTokens: null }
-      );
-      */
 
       onImport(data);
     } catch (e) {
