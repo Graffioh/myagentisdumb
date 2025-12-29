@@ -228,6 +228,20 @@
     background: rgba(210, 168, 255, 0.05);
   }
 
+  .row.highlighted.hasError {
+    background-color: rgba(230, 237, 243, 0.25);
+    border-bottom-color: rgba(230, 237, 243, 0.5);
+    border-left: 4px solid rgba(230, 237, 243, 0.8);
+    padding-left: 2px;
+  }
+
+  .row.highlighted.hasToolCalls {
+    background-color: rgba(230, 237, 243, 0.25);
+    border-bottom-color: rgba(230, 237, 243, 0.5);
+    border-left: 4px solid rgba(230, 237, 243, 0.8);
+    padding-left: 2px;
+  }
+
   .ts {
     font-size: 12px;
     color: rgba(230, 237, 243, 0.65);
