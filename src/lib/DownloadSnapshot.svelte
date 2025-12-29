@@ -7,14 +7,9 @@
     TokenUsage,
     MaidSnapshot,
   } from "../../protocol/types";
-  import { getSnapshotState } from "../utils/inspectionSnapshotState";
+  import { getSnapshotState } from "../utils/snapshot";
 
-  interface Props {
-    events: InspectionEventDisplay[];
-    modelName: string;
-  }
 
-  let { events, modelName }: Props = $props();
   let isLoading = $state(false);
   let showMenu = $state(false);
 
@@ -88,8 +83,10 @@
     context: ContextMessage[];
     tools: AgentToolDefinition[];
     tokenUsage: TokenUsage;
+    events: InspectionEventDisplay[];
+    modelName: string;
   } {
-    // Mirrors the *in-memory* state from `CurrentContext.svelte`.
+    // Mirrors the *in-memory* state from the UI.
     return getSnapshotState();
   }
 
@@ -97,6 +94,8 @@
     context: ContextMessage[];
     tools: AgentToolDefinition[];
     tokenUsage: TokenUsage;
+    events: InspectionEventDisplay[];
+    modelName: string;
   }): string {
     const sections: string[] = [];
     const separator = "═".repeat(60);
@@ -105,8 +104,8 @@
     // Header
     sections.push(`MAID INSPECTION SNAPSHOT`);
     sections.push(`Generated: ${timestamp}`);
-    if (modelName) {
-      sections.push(`Model: ${modelName}`);
+    if (data.modelName) {
+      sections.push(`Model: ${data.modelName}`);
     }
     sections.push(separator);
 
@@ -141,11 +140,11 @@
 
     // Inspection Events Section
     sections.push("\n📋 INSPECTION EVENTS (TRACE)\n");
-    if (events.length === 0) {
+    if (data.events.length === 0) {
       sections.push("No inspection events yet.");
     } else {
-      sections.push(`${events.length} event(s):\n`);
-      sections.push(events.map(formatEvent).join("\n\n"));
+      sections.push(`${data.events.length} event(s):\n`);
+      sections.push(data.events.map(formatEvent).join("\n\n"));
     }
 
     return sections.join("\n");
@@ -155,15 +154,17 @@
     context: ContextMessage[];
     tools: AgentToolDefinition[];
     tokenUsage: TokenUsage;
+    events: InspectionEventDisplay[];
+    modelName: string;
   }): MaidSnapshot {
     return {
       version: "1.0",
       exportedAt: new Date().toISOString(),
-      model: modelName,
+      model: data.modelName,
       tokenUsage: data.tokenUsage,
       tools: data.tools,
       context: data.context,
-      events: events.map((e) => ({
+      events: data.events.map((e) => ({
         ts: e.ts,
         data: e.data,
         inspectionEvent: e.inspectionEvent,

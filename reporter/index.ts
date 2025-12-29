@@ -148,6 +148,7 @@ export function createHttpInspectionReporter(
         },
 
         async tokens(currentUsage: number, maxTokens: number | null): Promise<void> {
+            console.log("Sending tokens update:", JSON.stringify({ currentUsage, maxTokens }));
             try {
                 const response = await fetch(`${baseUrl}/api/inspection/tokens`, {
                     method: "POST",
@@ -164,6 +165,7 @@ export function createHttpInspectionReporter(
         },
 
         async tools(toolDefinitions: AgentToolDefinition[]): Promise<void> {
+            console.log("Sending tool definitions:", JSON.stringify(toolDefinitions));
             try {
                 const response = await fetch(`${baseUrl}/api/inspection/tools`, {
                     method: "POST",
@@ -180,6 +182,7 @@ export function createHttpInspectionReporter(
         },
 
         async model(modelName: string): Promise<void> {
+            console.log("Sending model name:", modelName);
             try {
                 const response = await fetch(`${baseUrl}/api/inspection/model`, {
                     method: "POST",
@@ -196,6 +199,7 @@ export function createHttpInspectionReporter(
         },
 
         async invocationStart(message: string = "Invocation started"): Promise<void> {
+            console.log("Sending invocation start:", message);
             try {
                 const event: InspectionEvent = {
                     message,
@@ -216,6 +220,7 @@ export function createHttpInspectionReporter(
         },
 
         async invocationEnd(message: string = "Invocation ended"): Promise<void> {
+            console.log("Sending invocation end:", message);
             try {
                 const event: InspectionEvent = {
                     message,
@@ -236,7 +241,7 @@ export function createHttpInspectionReporter(
         },
 
         async error(message: string, details?: string): Promise<void> {
-            console.log("Sending inspection error:", message);
+            console.log("Sending inspection error:", message, details);
             try {
                 const response = await fetch(`${baseUrl}/api/inspection/errors`, {
                     method: "POST",

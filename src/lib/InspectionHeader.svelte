@@ -78,7 +78,7 @@
       clear
     </button>
     <ImportSnapshot {onImport} />
-    <DownloadSnapshot {events} {modelName} />
+    <DownloadSnapshot />
     <div 
       class="error-rate-pill" 
       class:has-errors={errorRate > 0}

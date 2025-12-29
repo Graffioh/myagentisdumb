@@ -11,7 +11,9 @@
     setSnapshotContext,
     setSnapshotToolDefinitions,
     setSnapshotTokenUsage,
-  } from "../utils/inspectionSnapshotState";
+    setSnapshotEvents,
+    setSnapshotModelName,
+  } from "../utils/snapshot";
 
   let events: InspectionEventDisplay[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");
@@ -109,6 +111,7 @@
     events = next.length > 300 ? next.slice(next.length - 300) : next;
     save("events", events);
     save("eventId", eventId);
+    setSnapshotEvents(events);
   }
 
   function toggleExpand(eventId: number) {
@@ -116,6 +119,7 @@
       e.id === eventId ? { ...e, expanded: !e.expanded } : e
     );
     save("events", events);
+    setSnapshotEvents(events);
   }
 
   function removeEventRow(eventId: number) {
@@ -124,6 +128,7 @@
       highlightedEventId = null;
     }
     save("events", events);
+    setSnapshotEvents(events);
   }
 
   function removeInvocationGroup(invocationId: string) {
@@ -135,6 +140,7 @@
       highlightedEventId = null;
     }
     save("events", events);
+    setSnapshotEvents(events);
   }
 
   function deleteAllEvents() {
@@ -143,9 +149,12 @@
     highlightedEventId = null;
     save("events", events);
     save("eventId", eventId);
+    setSnapshotEvents(events);
   }
 
   function handleImport(snapshot: MaidSnapshot) {
+    console.log("Importing snapshot:\n", snapshot);
+
     setSnapshotContext(snapshot.context || []);
     setSnapshotToolDefinitions(snapshot.tools || []);
     setSnapshotTokenUsage(
@@ -164,10 +173,12 @@
     eventId += importedEvents.length;
     events = importedEvents;
     modelName = snapshot.model || "";
+    setSnapshotModelName(modelName);
     highlightedEventId = null;
 
     save("events", events);
     save("eventId", eventId);
+    setSnapshotEvents(events);
   }
 
   function highlightEvent(eventIndex: number) {
@@ -196,6 +207,7 @@
           ? storedEvents.slice(storedEvents.length - 300)
           : storedEvents;
       events = cappedEvents;
+      setSnapshotEvents(events);
 
       const maxId = cappedEvents.reduce((m, e) => Math.max(m, e.id), 0);
       eventId = Math.max(storedEventId, maxId + 1);
@@ -241,6 +253,7 @@
         const data = JSON.parse(event.data);
         if (data.model !== undefined) {
           modelName = data.model;
+          setSnapshotModelName(modelName);
         }
       } catch (e) {
         console.error("Failed to parse model data:", e);

@@ -5,7 +5,7 @@
     setSnapshotContext,
     setSnapshotToolDefinitions,
     setSnapshotTokenUsage,
-  } from "../utils/inspectionSnapshotState";
+  } from "../utils/snapshot";
   import type {
     AgentToolDefinition,
     ContextMessage,

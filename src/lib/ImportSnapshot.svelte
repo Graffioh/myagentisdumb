@@ -1,10 +1,5 @@
 <script lang="ts">
   import type { MaidSnapshot } from "../../protocol/types";
-  import {
-    setSnapshotContext,
-    setSnapshotToolDefinitions,
-    setSnapshotTokenUsage,
-  } from "../utils/inspectionSnapshotState";
 
   interface Props {
     onImport: (snapshot: MaidSnapshot) => void;
@@ -33,7 +28,8 @@
     error = null;
 
     try {
-      const text = await file.text();
+      let text = await file.text();
+      text = text.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
       const data = JSON.parse(text);
 
       if (!validateSnapshot(data)) {
@@ -41,11 +37,13 @@
         return;
       }
 
+      /*
       setSnapshotContext(data.context || []);
       setSnapshotToolDefinitions(data.tools || []);
       setSnapshotTokenUsage(
         data.tokenUsage || { totalTokens: 0, contextLimit: null, remainingTokens: null }
       );
+      */
 
       onImport(data);
     } catch (e) {
