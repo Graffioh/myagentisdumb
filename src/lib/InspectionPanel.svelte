@@ -334,13 +334,14 @@
   <CurrentContext />
 
   <div class="footer">
-    <img src="/maid-logo.svg" alt="" class="maid-icon" />
     <a
       href="https://github.com/Graffioh/myagentisdumb"
       target="_blank"
       rel="noopener noreferrer"
-      class="maid-text">my agent is dumb</a
+      class="maid-link"
     >
+      <img src="/maid-logo.svg" alt="my agent is dumb" class="maid-icon" />
+    </a>
   </div>
 </div>
 
@@ -349,7 +350,6 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    border: 1px solid #ddd;
     border-radius: 8px;
     overflow: hidden;
     background: rgb(0, 0, 0);
@@ -373,22 +373,20 @@
     background: rgba(255, 255, 255, 0.03);
   }
 
+  .maid-link {
+    display: flex;
+    align-items: center;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+  }
+
+  .maid-link:hover {
+    opacity: 1;
+  }
+
   .maid-icon {
     width: 18px;
     height: 18px;
     flex-shrink: 0;
-  }
-
-  .maid-text {
-    font-size: 12px;
-    font-style: italic;
-    text-decoration: none;
-    transition: color 0.2s;
-    color: rgb(230, 237, 243);
-  }
-
-  .maid-text:hover {
-    color: #ffffff;
-    text-decoration: underline;
   }
 </style>

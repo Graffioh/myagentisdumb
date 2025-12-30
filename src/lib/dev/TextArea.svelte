@@ -32,7 +32,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: #666;
+    color: #737373;
     font-size: 14px;
     pointer-events: none;
     z-index: 0;

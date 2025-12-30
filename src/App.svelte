@@ -68,7 +68,6 @@
     min-width: 0;
     overflow: hidden;
     height: 100%;
-    border: 1px solid #ddd;
     border-radius: 8px;
     background: rgb(0, 0, 0);
     box-sizing: border-box;
@@ -81,6 +80,8 @@
   .chat-toggle {
     background: rgb(0, 0, 0);
     border: 1px solid rgba(255, 255, 255, 0.12);
+    border-bottom: 0px;
+    border-top: 0px;
     border-left: 1px solid rgba(255, 255, 255, 0.12);
     border-right: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 0;
@@ -100,11 +101,14 @@
   .chat-toggle:hover {
     background: rgba(45, 45, 45, 0.892);
     color: #e6edf3;
-    border-color: rgba(88, 166, 255, 0.5);
   }
 
   .chat-toggle:active {
     background: rgba(0, 0, 0, 0.15);
+  }
+
+  :global(*:focus) {
+    outline: none;
   }
 
   .arrow {
