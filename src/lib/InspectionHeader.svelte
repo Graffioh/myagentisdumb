@@ -31,6 +31,19 @@
   }: Props = $props();
 
   let showConfirmDialog = $state(false);
+  let showExitSnapshotDialog = $state(false);
+  let showExitHint = $state(false);
+  let prevViewMode = $state<ViewMode>("realtime");
+
+  $effect(() => {
+    if (prevViewMode === "realtime" && viewMode === "snapshot") {
+      showExitHint = true;
+      setTimeout(() => {
+        showExitHint = false;
+      }, 3000);
+    }
+    prevViewMode = viewMode;
+  });
 
   const statusClass = $derived(
     status === "error"
@@ -64,6 +77,19 @@
   function cancelDelete() {
     showConfirmDialog = false;
   }
+
+  function handleExitSnapshotClick() {
+    showExitSnapshotDialog = true;
+  }
+
+  function confirmExitSnapshot() {
+    onSwitchToRealtime();
+    showExitSnapshotDialog = false;
+  }
+
+  function cancelExitSnapshot() {
+    showExitSnapshotDialog = false;
+  }
 </script>
 
 <div class="header">
@@ -96,13 +122,18 @@
         {statusText}
       </div>
     {:else}
-      <button
-        class="pill snapshot"
-        onclick={onSwitchToRealtime}
-        title="Viewing imported snapshot. Click to switch to real-time."
-      >
-        Snapshot
-      </button>
+      <div class="snapshot-wrapper">
+        <button
+          class="pill snapshot"
+          onclick={handleExitSnapshotClick}
+          title="Viewing imported snapshot. Click to switch to real-time."
+        >
+          Snapshot
+        </button>
+        {#if showExitHint}
+          <div class="exit-hint">Click to exit snapshot mode</div>
+        {/if}
+      </div>
     {/if}
   </div>
 </div>
@@ -114,6 +145,15 @@
   cancelText="cancel"
   onConfirm={confirmDelete}
   onCancel={cancelDelete}
+/>
+
+<ConfirmDialog
+  show={showExitSnapshotDialog}
+  message="Exit snapshot mode? All events and context will be cleared."
+  confirmText="exit"
+  cancelText="cancel"
+  onConfirm={confirmExitSnapshot}
+  onCancel={cancelExitSnapshot}
 />
 
 <style>
@@ -181,6 +221,43 @@
   }
   .pill.snapshot:hover {
     background: rgba(255, 242, 143, 0.25);
+  }
+
+  .snapshot-wrapper {
+    position: relative;
+  }
+
+  .exit-hint {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: rgba(40, 40, 40, 0.95);
+    border: 1px solid rgba(255, 225, 73, 0.5);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #ffe2a8;
+    white-space: nowrap;
+    z-index: 1000;
+    animation: fadeInOut 3s ease-in-out forwards;
+    pointer-events: none;
+  }
+
+  .exit-hint::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    right: 12px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid rgba(255, 225, 73, 0.5);
+  }
+
+  @keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-4px); }
+    10% { opacity: 1; transform: translateY(0); }
+    80% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(4px); }
   }
 
   .error-rate-pill {

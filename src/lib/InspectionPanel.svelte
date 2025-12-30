@@ -175,7 +175,13 @@
   }
 
   function switchToRealtime() {
-    snapshot.switchToRealtime();
+    events = [];
+    eventId = 0;
+    modelName = "";
+    highlightedEventId = null;
+    save("events", events);
+    save("eventId", eventId);
+    snapshot.reset();
   }
 
   function highlightEvent(eventIndex: number) {
