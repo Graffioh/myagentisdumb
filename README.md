@@ -189,7 +189,7 @@ Click the "export ↓" button in the inspection header to download the current s
 
 Click the "import ↑" button to load a previously exported JSON snapshot. This restores the complete inspection state, allowing you to review and analyze historical agent behavior without reconnecting to a running agent.
 
-The import validates the snapshot format (MAID Snapshot v1.0) and ensures data integrity before loading.
+You can generate a snapshot based on your Amp or Claude Code conversation using the `generate-maid-snapshots` skill present in `.agents/skills`or `.claude/skills`.
 
 ## Integrating with the help of a coding agent
 
