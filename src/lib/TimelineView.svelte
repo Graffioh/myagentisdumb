@@ -557,7 +557,18 @@
 
   .timeline-bar.selected {
     z-index: 11;
-    box-shadow: 0 0 0 2px #fff;
+  }
+
+  .timeline-bar.llm.selected {
+    box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.9);
+  }
+
+  .timeline-bar.tool.selected {
+    box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.9);
+  }
+
+  .timeline-bar.error.selected {
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.9);
   }
 
   .bar-label {
