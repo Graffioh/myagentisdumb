@@ -21,6 +21,29 @@
     lane: number;
   };
 
+  interface TimelineData {
+    llmItems: TimelineItem[];
+    toolItems: TimelineItem[];
+    errorItems: TimelineItem[];
+    llmLaneCount: number;
+    toolLaneCount: number;
+    errorLaneCount: number;
+    minTime: number;
+    maxTime: number;
+  }
+
+  type ChildEvent = NonNullable<InspectionEventDisplay["inspectionEvent"]["children"]>[number];
+
+  function truncate(text: string, max = 50): string {
+    return text.length > max ? text.slice(0, max - 3) + "..." : text;
+  }
+
+  function getToolName(obj: unknown): string | null {
+    if (!obj || typeof obj !== "object") return null;
+    const o = obj as { function?: { name?: string }; name?: string };
+    return o.function?.name ?? o.name ?? null;
+  }
+
   function assignLanes(items: Omit<TimelineItem, 'lane'>[]): TimelineItem[] {
     const result: TimelineItem[] = [];
     const lanes: { endTime: number }[] = [];
@@ -30,7 +53,7 @@
       let minEndTime = Infinity;
 
       for (let l = 0; l < lanes.length; l++) {
-        if (item.startTime > lanes[l].endTime) {
+        if (item.startTime >= lanes[l].endTime) {
           if (lanes[l].endTime < minEndTime) {
             minEndTime = lanes[l].endTime;
             assignedLane = l;
@@ -51,7 +74,7 @@
     return result;
   }
 
-  const timelineData = $derived.by(() => {
+  const timelineData: TimelineData = $derived.by(() => {
     const items: Omit<TimelineItem, 'lane'>[] = [];
     let minTime = Infinity;
     let maxTime = 0;
@@ -61,8 +84,33 @@
       const children = event.inspectionEvent.children;
       if (!children) continue;
 
+      let timingChild: ChildEvent | undefined;
+      let toolChild: ChildEvent | undefined;
+      let contentChild: ChildEvent | undefined;
+      let reasoningChild: ChildEvent | undefined;
+      let errorChild: ChildEvent | undefined;
+
+      for (const c of children) {
+        switch (c.label) {
+          case InspectionEventLabel.Timing:
+            timingChild ??= c;
+            break;
+          case InspectionEventLabel.ToolCalls:
+            toolChild ??= c;
+            break;
+          case InspectionEventLabel.Content:
+            contentChild ??= c;
+            break;
+          case InspectionEventLabel.Reasoning:
+            reasoningChild ??= c;
+            break;
+          case InspectionEventLabel.Error:
+            errorChild ??= c;
+            break;
+        }
+      }
+
       let duration = 0;
-      const timingChild = children.find(c => c.label === InspectionEventLabel.Timing);
       if (timingChild) {
         const match = timingChild.data.match(/(\d+(?:\.\d+)?)\s*(ms|s)/i);
         if (match) {
@@ -78,99 +126,82 @@
         duration = 200;
       }
 
-      const hasToolCalls = children.some(c => c.label === InspectionEventLabel.ToolCalls);
-      const hasContent = children.some(c => c.label === InspectionEventLabel.Content);
-      const hasReasoning = children.some(c => c.label === InspectionEventLabel.Reasoning);
-
-      if (hasToolCalls) {
-        const toolChild = children.find(c => c.label === InspectionEventLabel.ToolCalls);
-        if (toolChild) {
-          try {
-            const parsed = JSON.parse(toolChild.data);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              for (const t of parsed) {
-                const toolName = t.function?.name || t.name || "tool";
-                items.push({
-                  id: items.length,
-                  eventId: event.id,
-                  type: "tool" as const,
-                  name: toolName,
-                  startTime: event.ts,
-                  duration,
-                  invocationId: event.invocationId,
-                });
-              }
-            } else if (parsed && typeof parsed === 'object') {
-              const toolName = parsed.function?.name || parsed.name || "Tool";
-                items.push({
-                  id: items.length,
-                  eventId: event.id,
-                  type: "tool" as const,
+      if (toolChild) {
+        try {
+          const parsed: unknown = JSON.parse(toolChild.data);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            for (const t of parsed) {
+              const toolName = getToolName(t) ?? "tool";
+              items.push({
+                id: items.length,
+                eventId: event.id,
+                type: "tool" as const,
                 name: toolName,
                 startTime: event.ts,
                 duration,
                 invocationId: event.invocationId,
               });
             }
-          } catch {
-            const patterns = [
-              /"name"\s*:\s*"([^"]+)"/,
-              /"function"\s*:\s*\{\s*"name"\s*:\s*"([^"]+)"/,
-            ];
-            for (const pattern of patterns) {
-              const match = toolChild.data.match(pattern);
-              if (match) {
-                items.push({
-                  id: items.length,
-                  eventId: event.id,
-                  type: "tool" as const,
-                  name: match[1],
-                  startTime: event.ts,
-                  duration,
-                  invocationId: event.invocationId,
-                });
-                break;
-              }
+          } else {
+            const toolName = getToolName(parsed) ?? "tool";
+            items.push({
+              id: items.length,
+              eventId: event.id,
+              type: "tool" as const,
+              name: toolName,
+              startTime: event.ts,
+              duration,
+              invocationId: event.invocationId,
+            });
+          }
+        } catch {
+          const patterns = [
+            /"name"\s*:\s*"([^"]+)"/,
+            /"function"\s*:\s*\{\s*"name"\s*:\s*"([^"]+)"/,
+          ];
+          for (const pattern of patterns) {
+            const match = toolChild.data.match(pattern);
+            if (match) {
+              items.push({
+                id: items.length,
+                eventId: event.id,
+                type: "tool" as const,
+                name: match[1],
+                startTime: event.ts,
+                duration,
+                invocationId: event.invocationId,
+              });
+              break;
             }
           }
         }
-      } else if (hasContent || hasReasoning) {
-        const truncatedText = event.inspectionEvent.message.length > 50 
-          ? event.inspectionEvent.message.substring(0, 47) + "..." 
-          : event.inspectionEvent.message;
+      } else if (contentChild || reasoningChild) {
         items.push({
           id: items.length,
           eventId: event.id,
           type: "llm" as const,
-          name: truncatedText,
+          name: truncate(event.inspectionEvent.message),
           startTime: event.ts,
           duration,
           invocationId: event.invocationId,
         });
       }
 
-      const hasError = children.some(c => c.label === InspectionEventLabel.Error);
-      if (hasError) {
-        const errorChild = children.find(c => c.label === InspectionEventLabel.Error);
-        if (errorChild) {
-          const truncatedError = errorChild.data.length > 50 
-            ? errorChild.data.substring(0, 47) + "..." 
-            : errorChild.data;
-          items.push({
-            id: items.length,
-            eventId: event.id,
-            type: "error" as const,
-            name: truncatedError,
-            startTime: event.ts,
-            duration,
-            invocationId: event.invocationId,
-          });
-        }
+      if (errorChild) {
+        items.push({
+          id: items.length,
+          eventId: event.id,
+          type: "error" as const,
+          name: truncate(errorChild.data),
+          startTime: event.ts,
+          duration,
+          invocationId: event.invocationId,
+        });
       }
 
+      const end = event.ts + duration;
       if (event.ts < minTime) minTime = event.ts;
-      if (event.ts + duration > maxTime) maxTime = event.ts + duration;
-      if (event.ts > maxTime) maxTime = event.ts;
+      if (end > maxTime) maxTime = end;
     }
 
     const llmItems = assignLanes(items.filter(i => i.type === "llm").sort((a, b) => a.startTime - b.startTime));
@@ -180,6 +211,8 @@
     const toolLaneCount = toolItems.length > 0 ? Math.max(...toolItems.map(i => i.lane)) + 1 : 1;
     const errorLaneCount = errorItems.length > 0 ? Math.max(...errorItems.map(i => i.lane)) + 1 : 1;
 
+    const hasItems = items.length > 0;
+
     return {
       llmItems, 
       toolItems,
@@ -187,20 +220,23 @@
       llmLaneCount, 
       toolLaneCount,
       errorLaneCount,
-      minTime: minTime === Infinity ? 0 : minTime, 
-      maxTime: maxTime || Date.now() 
+      minTime: hasItems ? minTime : 0, 
+      maxTime: hasItems ? maxTime : 0 
     };
   });
 
   const totalDuration = $derived(timelineData.maxTime - timelineData.minTime);
+  const minWidthPerMs = 0.15;
+  const trackWidth = $derived(Math.max(totalDuration * minWidthPerMs, 100));
 
   const timeMarkers = $derived.by(() => {
     if (totalDuration === 0) return [0];
     const markers: number[] = [];
     const minLabelSpacing = 60;
     const availableWidth = trackWidth;
-    const maxLabels = Math.floor(availableWidth / minLabelSpacing);
-    const idealInterval = totalDuration / Math.max(maxLabels, 1);
+    const MAX_LABELS = 100;
+    const maxLabels = Math.min(MAX_LABELS, Math.floor(availableWidth / minLabelSpacing) || 1);
+    const idealInterval = totalDuration / maxLabels;
     
     const niceIntervals = [100, 200, 500, 1000, 2000, 5000, 10000, 30000, 60000];
     let interval = niceIntervals.find(i => i >= idealInterval) || idealInterval;
@@ -215,9 +251,6 @@
     return markers;
   });
 
-  const minWidthPerMs = 0.15;
-  const trackWidth = $derived(Math.max(totalDuration * minWidthPerMs, 100));
-
   function getBarStyle(item: TimelineItem, laneCount: number): string {
     if (totalDuration === 0) return "left: 0px; width: 60px; top: 0; height: 100%;";
     const left = (item.startTime - timelineData.minTime) * minWidthPerMs;
@@ -230,13 +263,15 @@
 
   let selectedId = $state<number | null>(null);
   let hoveredId = $state<number | null>(null);
-  let llmBarsContainer = $state<HTMLDivElement>();
-  let toolBarsContainer = $state<HTMLDivElement>();
+  let llmBarsContainer = $state<HTMLDivElement | undefined>(undefined);
+  let toolBarsContainer = $state<HTMLDivElement | undefined>(undefined);
 
   function syncScroll(source: HTMLDivElement, targets: HTMLDivElement[]) {
     const left = source.scrollLeft;
     for (const target of targets) {
-      target.scrollLeft = left;
+      if (target.scrollLeft !== left) {
+        target.scrollLeft = left;
+      }
     }
   }
 
