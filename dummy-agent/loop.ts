@@ -14,7 +14,8 @@ import {
 
 const inspectionReporter = createHttpInspectionReporter();
 
-let currentModel = "openai/gpt-oss-120b";
+const DEFAULT_MODEL = "openai/gpt-oss-120b";
+let currentModel = DEFAULT_MODEL;
 
 export async function clearContext() {
     await clearContextUtil(currentModel);
@@ -28,12 +29,42 @@ export function getTokenUsage(): TokenUsage {
     return getTokenUsageUtil();
 }
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-if (!OPENROUTER_API_KEY) {
-    throw new Error("OPENROUTER_API_KEY environment variable is not set");
-}
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+function getApiKey(): string {
+    const key = process.env.OPENROUTER_API_KEY;
+    if (!key) throw new Error("OPENROUTER_API_KEY environment variable is not set");
+    return key;
+}
 const MAX_TOOL_ITERATIONS = 10;
+
+function extractFinalContent(msg: any): { text: string; empty: boolean } {
+    const c = msg.content;
+    if (typeof c === "string") {
+        const trimmed = c.trim();
+        if (trimmed.length === 0) {
+            return { text: "The agent is confused (ᗒᗣᗕ)", empty: true };
+        }
+        return { text: trimmed, empty: false };
+    }
+
+    if (Array.isArray(c)) {
+        const textParts = c
+            .filter((p: any) => p?.type === "text" && typeof p.text === "string")
+            .map((p: any) => p.text.trim())
+            .filter((t: string) => t.length > 0);
+        if (textParts.length === 0) {
+            return { text: "The agent is confused (ᗒᗣᗕ)", empty: true };
+        }
+        return { text: textParts.join("\n\n"), empty: false };
+    }
+
+    if (c == null) {
+        return { text: "The agent is confused (ᗒᗣᗕ)", empty: true };
+    }
+
+    return { text: JSON.stringify(c), empty: false };
+}
 
 const SYSTEM_PROMPT = `
 # General
@@ -59,7 +90,8 @@ When the user request:
 - a meme, fetch a meme using getMeme tool from r/dankmemes subreddit, and display the link to the meme
 `.trim();
 
-export async function runLoop(userInput: string) {
+export async function runLoop(userInput: string, model: string = DEFAULT_MODEL) {
+    currentModel = model;
     await inspectionReporter.tools(toolDefinitions);
     await inspectionReporter.model(currentModel);
 
@@ -72,7 +104,6 @@ export async function runLoop(userInput: string) {
     await updateContext({ role: "user", content: userInput });
 
     await inspectionReporter.invocationStart("Agent is processing the user input...");
-    await inspectionReporter.tools(toolDefinitions);
 
     try {
     let iteration = 0;
@@ -95,7 +126,7 @@ export async function runLoop(userInput: string) {
         const response = await fetch(OPENROUTER_API_URL, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                "Authorization": `Bearer ${getApiKey()}`,
                 "Content-Type": "application/json",
                 "HTTP-Referer": "http://localhost:5555",
                 "X-Title": "MyAgentIsDumb",
@@ -108,11 +139,23 @@ export async function runLoop(userInput: string) {
             }),
         });
 
+        const responseBody = await response.text();
+        
         if (!response.ok) {
-            throw new Error(`OpenRouter API error: ${response.statusText}`);
+            await inspectionReporter.error(
+                "OpenRouter API error",
+                `status=${response.status} body=${responseBody.slice(0, 2000)}`
+            );
+            throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
         }
 
-        const data = await response.json() as any;
+        let data: any;
+        try {
+            data = JSON.parse(responseBody);
+        } catch {
+            await inspectionReporter.error("OpenRouter API invalid JSON", responseBody.slice(0, 2000));
+            throw new Error("OpenRouter API returned invalid JSON");
+        }
 
         await inspectionReporter.log(`Full OpenRouter API response: ${JSON.stringify(data, null, 2)}`);
 
@@ -167,10 +210,21 @@ export async function runLoop(userInput: string) {
             const toolCount = toolCalls.length;
             const toolText = toolCount === 1 ? "tool" : "tools";
 
-            // Validate all tool call arguments BEFORE adding to context
-            // This prevents corrupted messages from being added if the model returns malformed JSON
+            // Validate all tool calls BEFORE adding to context
+            // This prevents corrupted messages from being added if the model returns malformed JSON or unknown tools
             const parsedArgs: Record<string, unknown>[] = [];
             for (const call of toolCalls) {
+                const toolName = call.function.name as keyof typeof toolImplementations;
+                
+                // Validate tool exists
+                if (!toolImplementations[toolName]) {
+                    await inspectionReporter.trace(
+                        `Error: Unknown tool ${toolName}`,
+                        [{ label: InspectionEventLabel.ToolCalls, data: JSON.stringify(call, null, 2) }]
+                    );
+                    throw new Error(`Unknown tool: ${toolName}`);
+                }
+                
                 const rawArgs = call.function.arguments;
                 if (typeof rawArgs !== "string" || rawArgs.trim().length === 0) {
                     await inspectionReporter.trace(
@@ -215,14 +269,16 @@ export async function runLoop(userInput: string) {
                 const toolName = call.function.name as keyof typeof toolImplementations;
                 const args = parsedArgs[i];
 
-                if (!toolImplementations[toolName]) {
-                    throw new Error(`Unknown tool: ${toolName}`);
+                const startTime = Date.now();
+                let result: unknown;
+                try {
+                    result = await toolImplementations[toolName](args as any);
+                } catch (e) {
+                    const errMsg = e instanceof Error ? e.message : String(e);
+                    await inspectionReporter.error(`Tool ${toolName} failed`, errMsg);
+                    throw e;
                 }
-
-                const startTime = performance.now();
-                const result = await toolImplementations[toolName](args as any);
-                const endTime = performance.now();
-                const durationMs = endTime - startTime;
+                const durationMs = Date.now() - startTime;
 
                 // Report tool execution with timing
                 await inspectionReporter.trace(
@@ -245,19 +301,8 @@ export async function runLoop(userInput: string) {
         }
 
         // No more tool calls, so we can display the final content
-        let finalContent: string;
-        let hasEmptyContent = false;
-        
-        if (typeof msg.content === "string" && msg.content.trim().length > 0) {
-            finalContent = msg.content;
-        } else if (msg.content == null || (typeof msg.content === "string" && msg.content.trim().length === 0)) {
-            finalContent = "The agent is confused (ᗒᗣᗕ)";
-            hasEmptyContent = true;
-        } else {
-            finalContent = String(msg.content);
-        }
+        const { text: finalContent, empty: hasEmptyContent } = extractFinalContent(msg);
 
-        // Report empty content as an error
         if (hasEmptyContent) {
             await inspectionReporter.error("Empty content returned", "Model returned empty or null content");
         }
