@@ -23,22 +23,33 @@
   let agentStatusEventSource: EventSource | null = null;
   let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  // Filter events based on label filter
+  // Filter events based on label filter - show all events from invocation groups that contain the label
   const filteredEvents = $derived.by(() => {
     if (labelFilter === "all") return events;
-    
-    return events.filter((e) => {
-      const children = e.inspectionEvent.children;
-      if (!children) return false;
-      
-      if (labelFilter === "tools") {
-        return children.some((child) => child.label === InspectionEventLabel.ToolCalls);
+
+    // Find all invocationIds that have at least one event with the specified label
+    const matchingInvocationIds = new Set<string>();
+
+    for (const e of events) {
+      if (!e.invocationId) continue;
+
+      const hasLabel = e.inspectionEvent.children?.some((child) => {
+        if (labelFilter === "tools") {
+          return child.label === InspectionEventLabel.ToolCalls;
+        }
+        if (labelFilter === "errors") {
+          return child.label === InspectionEventLabel.Error;
+        }
+        return false;
+      });
+
+      if (hasLabel) {
+        matchingInvocationIds.add(e.invocationId);
       }
-      if (labelFilter === "errors") {
-        return children.some((child) => child.label === InspectionEventLabel.Error);
-      }
-      return true;
-    });
+    }
+
+    // Return all events from invocation groups that contain the label
+    return events.filter((e) => e.invocationId && matchingInvocationIds.has(e.invocationId));
   });
 
   // Calculate error rate from events (derived from persisted events)
@@ -203,9 +214,10 @@
     snapshot.reset();
   }
 
-  function highlightEvent(eventIndex: number) {
-    if (eventIndex >= 0 && eventIndex < events.length) {
-      highlightedEventId = events[eventIndex].id;
+  function highlightEvent(eventId: number) {
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      highlightedEventId = event.id;
 
       if (highlightTimeout) {
         clearTimeout(highlightTimeout);
@@ -350,6 +362,7 @@
     onToggleExpand={toggleExpand}
     onRemove={removeEventRow}
     onRemoveGroup={removeInvocationGroup}
+    onSelectEvent={highlightEvent}
   />
 
   <CurrentContext />

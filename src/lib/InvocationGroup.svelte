@@ -1,5 +1,6 @@
 <script lang="ts">
   import EventRow from "./EventRow.svelte";
+  import TimelineView from "./TimelineView.svelte";
   import type { InspectionEventDisplay } from "../types";
   import { InspectionEventLabel } from "../../protocol/types";
 
@@ -19,6 +20,7 @@
     onToggleExpand,
     onRemove,
     onRemoveGroup,
+    onSelectEvent,
   }: {
     group: InvocationGroupData;
     isExpanded: boolean;
@@ -28,7 +30,10 @@
     onToggleExpand: (eventId: number) => void;
     onRemove: (eventId: number) => void;
     onRemoveGroup: (invocationId: string) => void;
+    onSelectEvent?: (eventId: number) => void;
   } = $props();
+
+  let showTimeline = $state(false);
 
   function formatDuration(startTs: number, endTs: number): string {
     const ms = Math.max(0, endTs - startTs);
@@ -47,6 +52,11 @@
     return group.events.some(e =>
       e.inspectionEvent.children?.some(child => child.label === InspectionEventLabel.Error)
     );
+  }
+
+  function toggleTimeline(e: Event) {
+    e.stopPropagation();
+    showTimeline = !showTimeline;
   }
 </script>
 
@@ -74,14 +84,33 @@
         {group.events.length} events • {formatDuration(group.firstTs, group.lastTs)}
       </span>
     </button>
-    <button
-      class="remove-button"
-      onclick={() => onRemoveGroup(group.invocationId)}
-      title="Remove invocation group"
-    >
-      ×
-    </button>
+    <div class="group-actions">
+      <button
+        class="action-button"
+        class:active={showTimeline}
+        onclick={toggleTimeline}
+        title="Show timeline"
+      >
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="none">
+          <rect x="2" y="1" width="8" height="2" rx="1" fill="currentColor"/>
+          <rect x="5" y="5" width="7" height="2" rx="1" fill="currentColor"/>
+          <rect x="1" y="9" width="5" height="2" rx="1" fill="currentColor"/>
+        </svg>
+      </button>
+      <button
+        class="remove-button"
+        onclick={() => onRemoveGroup(group.invocationId)}
+        title="Remove invocation group"
+      >
+        ×
+      </button>
+    </div>
   </div>
+  {#if showTimeline}
+    <div class="group-timeline">
+      <TimelineView events={group.events} onSelectEvent={onSelectEvent} />
+    </div>
+  {/if}
   {#if isExpanded}
     <div class="group-events">
       {#each group.events as e (e.id)}
@@ -214,7 +243,6 @@
     width: 24px;
     height: 24px;
     flex-shrink: 0;
-    margin-right: 12px;
   }
 
   .remove-button:hover {
@@ -225,5 +253,43 @@
 
   .remove-button:active {
     background: rgba(248, 81, 73, 0.2);
+  }
+
+  .group-actions {
+    display: flex;
+    gap: 4px;
+    margin-right: 8px;
+  }
+
+  .action-button {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: rgba(230, 237, 243, 0.65);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    width: 24px;
+    height: 24px;
+  }
+
+  .action-button:hover {
+    border-color: rgba(99, 179, 237, 0.7);
+    color: #63b3ed;
+    background: rgba(99, 179, 237, 0.1);
+  }
+
+  .action-button.active {
+    border-color: rgba(99, 179, 237, 0.8);
+    color: #63b3ed;
+    background: rgba(99, 179, 237, 0.15);
+  }
+
+  .group-timeline {
+    border-top: 1px solid rgba(88, 166, 255, 0.15);
+    background: rgba(0, 0, 0, 0.2);
   }
 </style>

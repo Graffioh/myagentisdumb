@@ -293,7 +293,7 @@
     top: 100%;
     right: 0;
     margin-top: 4px;
-    background: #1c1c1c;
+    background: #000000;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 4px;
     overflow: hidden;

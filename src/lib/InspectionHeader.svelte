@@ -103,8 +103,8 @@
     <div class="title">Agent inspection</div>
     <div class="model">{modelName || "no model name available"}</div>
   </div>
-  <div class="header-right-half">
-    <button
+    <div class="header-right-half">
+      <button
       class="delete-events-button"
       onclick={handleClearClick}
       title="Delete all events"
