@@ -3,7 +3,6 @@
   import TimelineView from "./TimelineView.svelte";
   import type { InspectionEventDisplay } from "../types";
   import { InspectionEventLabel } from "../../protocol/types";
-  import { formatLatency } from "../utils/latency";
 
   export type InvocationGroupData = {
     invocationId: string;
@@ -118,7 +117,7 @@
         <span class="error-badge" title="Error occurred">Error</span>
       {/if}
       <span class="group-meta">
-        {group.events.length} events • {formatDuration(group.firstTs, group.lastTs)} • p50: {formatLatency(latencyPercentiles.p50)} | p95: {formatLatency(latencyPercentiles.p95)} | p99: {formatLatency(latencyPercentiles.p99)}
+        {group.events.length} events • {formatDuration(group.firstTs, group.lastTs)}
       </span>
     </button>
     <div class="group-actions">
@@ -145,7 +144,7 @@
   </div>
   {#if showTimeline}
     <div class="group-timeline">
-      <TimelineView events={group.events} onSelectEvent={onSelectEvent} />
+      <TimelineView events={group.events} onSelectEvent={onSelectEvent} latencyPercentiles={latencyPercentiles} />
     </div>
   {/if}
   {#if isExpanded}

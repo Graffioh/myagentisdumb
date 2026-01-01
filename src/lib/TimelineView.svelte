@@ -6,9 +6,10 @@
   interface Props {
     events: InspectionEventDisplay[];
     onSelectEvent?: (eventId: number) => void;
+    latencyPercentiles?: { p50: number; p95: number; p99: number };
   }
 
-  let { events, onSelectEvent }: Props = $props();
+  let { events, onSelectEvent, latencyPercentiles }: Props = $props();
 
   type TimelineItem = {
     id: number;
@@ -278,7 +279,10 @@
     <div class="timeline-header">
       <span class="timeline-title">Timeline</span>
       <span class="timeline-stats">
-        {totalItems} items 
+        <span>{totalItems} items</span>
+        {#if latencyPercentiles}
+          <span class="percentiles"> • p50: {formatLatency(latencyPercentiles.p50)} | p95: {formatLatency(latencyPercentiles.p95)} | p99: {formatLatency(latencyPercentiles.p99)}</span>
+        {/if}
       </span>
     </div>
     
@@ -407,9 +411,15 @@
   }
 
   .timeline-stats {
+    display: flex;
+    gap: 12px;
     font-size: 11px;
     color: rgba(230, 237, 243, 0.6);
     font-family: monospace;
+  }
+
+  .percentiles {
+    color: rgba(230, 237, 243, 0.5);
   }
 
   .timeline-legend {
