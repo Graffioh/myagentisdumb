@@ -107,10 +107,11 @@
 
   function handleSelect(displayIndex: number) {
     selectedIndex = displayIndex;
-    // Use the original index for the callback
+    // Use the event ID for the callback (not the index)
     const originalIndex = latencyData[displayIndex]?.originalIndex;
-    if (originalIndex !== undefined) {
-      onSelectEvent?.(originalIndex);
+    const eventId = events[originalIndex]?.id;
+    if (eventId !== undefined) {
+      onSelectEvent?.(eventId);
     }
   }
 

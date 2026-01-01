@@ -21,6 +21,8 @@ This project is an agent telemetry dev tool to inspect a custom running agent lo
 
 ## Minimal coding style advised
 
+YOU MUST:
+
 - Svelte 5 idiomatic
 - Follow good TypeScript practices
 - Be mindful of the performance impact of your code
@@ -28,8 +30,8 @@ This project is an agent telemetry dev tool to inspect a custom running agent lo
 
 ## Testing with playwright skill
 
-When asked to implement or bug fix a feature in the UI, use the playwright skill.
+When asked to implement or bug fix a feature in the UI, use the playwright skill:
 
 - Use :5555 port for the frontend
-- Import maid-snapshot.json present in the root directory to help you test
-- Clear local storage before checking the new code
+- Import maid-snapshot.json present in the root directory to help you test with data
+- Clear localStorage before checking the new code
