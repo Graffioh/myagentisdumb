@@ -9,6 +9,12 @@
   import { load, save } from "../utils/persistence";
   import { snapshot } from "../utils/snapshot.svelte";
 
+  interface Props {
+    onOpenChat?: () => void;
+  }
+
+  let { onOpenChat }: Props = $props();
+
   let events: InspectionEventDisplay[] = $state([]);
   let status = $state<"connecting" | "connected" | "error">("connecting");
   let agentConnected = $state<boolean>(false);
@@ -376,6 +382,15 @@
     >
       <img src="/maid-logo.svg" alt="my agent is dumb" class="maid-icon" />
     </a>
+    {#if onOpenChat}
+      <button
+        class="chat-button"
+        onclick={onOpenChat}
+        aria-label="Open chat window"
+      >
+        <img src="/chat-bubble.svg" alt="Chat" class="chat-icon" />
+      </button>
+    {/if}
   </div>
 </div>
 
@@ -401,6 +416,7 @@
   .footer {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
     padding: 10px 12px;
     border-top: 1px solid rgba(214, 214, 214, 0.224);
@@ -422,5 +438,33 @@
     width: 18px;
     height: 18px;
     flex-shrink: 0;
+  }
+
+  .chat-button {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .chat-button:hover {
+    background: rgba(45, 45, 45, 0.892);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  .chat-button:hover .chat-icon {
+    opacity: 1;
+  }
+
+  .chat-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.65;
+    transition: opacity 0.2s;
   }
 </style>

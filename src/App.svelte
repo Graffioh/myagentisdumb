@@ -1,30 +1,44 @@
 <script lang="ts">
-  import Chat from "./lib/dev/Chat.svelte";
   import InspectionPanel from "./lib/InspectionPanel.svelte";
+  import JudgePanel from "./lib/JudgePanel.svelte";
 
-  let chatOpen = $state(false);
+  let chatWindow: Window | null = null;
+  let judgeOpen = $state(false);
 
-  function toggleChat() {
-    chatOpen = !chatOpen;
+  function openChatPopup() {
+    if (chatWindow && !chatWindow.closed) {
+      chatWindow.focus();
+      return;
+    }
+
+    chatWindow = window.open(
+      "/chat.html",
+      "maid-chat",
+      "width=600,height=700,resizable=yes,scrollbars=yes"
+    );
+  }
+
+  function toggleJudge() {
+    judgeOpen = !judgeOpen;
   }
 </script>
 
 <main>
   <div id="panels">
     <div id="panel-inspection">
-      <InspectionPanel />
+      <InspectionPanel onOpenChat={openChatPopup} />
     </div>
     <button
-      class="chat-toggle"
-      onclick={toggleChat}
-      aria-label={chatOpen ? "Collapse chat panel" : "Expand chat panel"}
-      aria-expanded={chatOpen}
+      class="judge-toggle"
+      onclick={toggleJudge}
+      aria-label={judgeOpen ? "Collapse judge panel" : "Expand judge panel"}
+      aria-expanded={judgeOpen}
     >
-      <span class="arrow {chatOpen ? '' : 'collapsed'}">▶</span>
+      <span class="arrow {judgeOpen ? '' : 'collapsed'}">▶</span>
     </button>
-    <div id="panel-chat" class={chatOpen ? "" : "collapsed"}>
-      <div id="chat-content" class={chatOpen ? "" : "hidden"}>
-        <Chat />
+    <div id="panel-judge" class={judgeOpen ? "" : "collapsed"}>
+      <div id="judge-content" class={judgeOpen ? "" : "hidden"}>
+        <JudgePanel />
       </div>
     </div>
   </div>
@@ -48,42 +62,34 @@
   #panel-inspection {
     flex: 1;
     min-width: 0;
-    transition: all 0.3s ease;
   }
 
-  #panel-chat {
-    width: 600px;
+  #panel-judge {
+    width: 350px;
     transition: width 0.3s ease;
     flex-shrink: 0;
-    background: black;
+    background: rgb(15, 15, 15);
   }
 
-  #panel-chat.collapsed {
+  #panel-judge.collapsed {
     width: 0;
     overflow: hidden;
   }
 
-  #chat-content {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
+  #judge-content {
     height: 100%;
-    border-radius: 8px;
-    background: rgb(0, 0, 0);
-    box-sizing: border-box;
+    overflow: hidden;
   }
 
-  #chat-content.hidden {
+  #judge-content.hidden {
     display: none;
   }
 
-  .chat-toggle {
+  .judge-toggle {
     background: rgb(0, 0, 0);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-bottom: 0px;
-    border-top: 0px;
-    border-left: 1px solid rgba(255, 255, 255, 0.12);
-    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    border-top: 0;
+    border-bottom: 0;
     border-radius: 0;
     color: rgba(230, 237, 243, 0.65);
     cursor: pointer;
@@ -93,22 +99,18 @@
     justify-content: center;
     transition: all 0.2s;
     flex-shrink: 0;
-    width: 40px;
+    width: 30px;
     height: 100%;
     z-index: 10;
   }
 
-  .chat-toggle:hover {
+  .judge-toggle:hover {
     background: rgba(45, 45, 45, 0.892);
     color: #e6edf3;
   }
 
-  .chat-toggle:active {
+  .judge-toggle:active {
     background: rgba(0, 0, 0, 0.15);
-  }
-
-  :global(*:focus) {
-    outline: none;
   }
 
   .arrow {
@@ -119,5 +121,9 @@
 
   .arrow.collapsed {
     transform: rotate(180deg);
+  }
+
+  :global(*:focus) {
+    outline: none;
   }
 </style>

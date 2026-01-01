@@ -3,7 +3,7 @@
 </script>
 
 <div class="chat-display">
-  <div class="placeholder-text">Optional panel used for development</div>
+  <div class="placeholder-text">Chat to interact with the dummy agent</div>
   <div class="chat-content">{@html text}</div>
 </div>
 
