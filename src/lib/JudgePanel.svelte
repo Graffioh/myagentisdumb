@@ -1,7 +1,7 @@
 <script lang="ts">
   import { evaluationManager } from "../managers/evaluation.svelte";
 
-  const state = $derived(evaluationManager.state);
+  const evalState = $derived(evaluationManager.state);
   let promptExpanded = $state(false);
 
   function getScoreColor(score: number): string {
@@ -29,8 +29,8 @@
   </div>
 
   <div class="content">
-    <details class="prompt-details" open={promptExpanded}>
-      <summary onclick={() => (promptExpanded = !promptExpanded)}>Custom Evaluation Prompt</summary>
+    <details class="prompt-details" bind:open={promptExpanded}>
+      <summary>Custom Evaluation Prompt</summary>
       <div class="system-prompt-section">
         <textarea
           id="system-prompt"
@@ -44,28 +44,28 @@
         </p>
       </div>
     </details>
-    {#if state.isLoading}
+    {#if evalState.isLoading}
       <div class="loading">
         <div class="spinner"></div>
         <p>Evaluating response...</p>
       </div>
-    {:else if state.error}
+    {:else if evalState.error}
       <div class="error-state">
         <p class="error-title">Evaluation Failed</p>
-        <p class="error-message">{state.error}</p>
+        <p class="error-message">{evalState.error}</p>
         <button class="retry-button" onclick={() => evaluationManager.clear()}>Dismiss</button>
       </div>
-    {:else if state.result}
+    {:else if evalState.result}
       <div class="evaluation">
         <button class="clear-button" onclick={() => evaluationManager.clear()}>Clear Result</button>
-        <div class="overall-score" style="--score-color: {getScoreColor(state.result.overallScore)}">
-          <div class="score-value">{state.result.overallScore.toFixed(1)}</div>
+        <div class="overall-score" style="--score-color: {getScoreColor(evalState.result.overallScore)}">
+          <div class="score-value">{evalState.result.overallScore.toFixed(1)}</div>
           <div class="score-max">/10</div>
-          <div class="score-label">{getScoreLabel(state.result.overallScore)}</div>
+          <div class="score-label">{getScoreLabel(evalState.result.overallScore)}</div>
         </div>
 
         <div class="scores-grid">
-          {#each Object.entries(state.result.scores) as [key, value]}
+          {#each Object.entries(evalState.result.scores) as [key, value]}
             <div class="score-card">
               <div class="score-card-value" style="color: {getScoreColor(value as number)}">{value}</div>
               <div class="score-card-label">{key}</div>
@@ -75,36 +75,36 @@
 
         <div class="summary-section">
           <h3>Summary</h3>
-          <p>{state.result.summary}</p>
+          <p>{evalState.result.summary}</p>
         </div>
 
-        {#if state.result.strengths.length > 0}
+        {#if evalState.result.strengths.length > 0}
           <div class="list-section strengths">
             <h3>✓ Strengths</h3>
             <ul>
-              {#each state.result.strengths as strength}
+              {#each evalState.result.strengths as strength}
                 <li>{strength}</li>
               {/each}
             </ul>
           </div>
         {/if}
 
-        {#if state.result.weaknesses.length > 0}
+        {#if evalState.result.weaknesses.length > 0}
           <div class="list-section weaknesses">
             <h3>✗ Weaknesses</h3>
             <ul>
-              {#each state.result.weaknesses as weakness}
+              {#each evalState.result.weaknesses as weakness}
                 <li>{weakness}</li>
               {/each}
             </ul>
           </div>
         {/if}
 
-        {#if state.result.suggestions.length > 0}
+        {#if evalState.result.suggestions.length > 0}
           <div class="list-section suggestions">
             <h3>💡 Suggestions</h3>
             <ul>
-              {#each state.result.suggestions as suggestion}
+              {#each evalState.result.suggestions as suggestion}
                 <li>{suggestion}</li>
               {/each}
             </ul>
@@ -117,11 +117,11 @@
             <div class="context-content">
               <div class="context-item">
                 <span class="context-label">User Query</span>
-                <pre>{state.userQuery}</pre>
+                <pre>{evalState.userQuery}</pre>
               </div>
               <div class="context-item">
                 <span class="context-label">Agent Response</span>
-                <pre>{state.agentResponse}</pre>
+                <pre>{evalState.agentResponse}</pre>
               </div>
             </div>
           </details>
@@ -213,12 +213,6 @@
   .prompt-details .system-prompt-section {
     padding: 0 12px 12px;
     margin-bottom: 0;
-  }
-
-  .system-prompt-section label {
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(230, 237, 243, 0.9);
   }
 
   .system-prompt-section textarea {
