@@ -21,6 +21,53 @@
     if (score >= 3) return "Poor";
     return "Very Poor";
   }
+
+  function exportToMarkdown() {
+    if (!evalState.result) return;
+
+    const r = evalState.result;
+    let md = `# LLM Evaluation Report\n\n`;
+    md += `## Overall Score: ${r.overallScore.toFixed(1)}/10 (${getScoreLabel(r.overallScore)})\n\n`;
+
+    md += `## Scores\n\n`;
+    md += `| Criterion | Score |\n|-----------|-------|\n`;
+    for (const [key, value] of Object.entries(r.scores)) {
+      md += `| ${key} | ${value} |\n`;
+    }
+    md += `\n`;
+
+    md += `## Summary\n\n${r.summary}\n\n`;
+
+    if (r.strengths.length > 0) {
+      md += `## Strengths\n\n`;
+      r.strengths.forEach((s) => (md += `- ${s}\n`));
+      md += `\n`;
+    }
+
+    if (r.weaknesses.length > 0) {
+      md += `## Weaknesses\n\n`;
+      r.weaknesses.forEach((w) => (md += `- ${w}\n`));
+      md += `\n`;
+    }
+
+    if (r.suggestions.length > 0) {
+      md += `## Suggestions\n\n`;
+      r.suggestions.forEach((s) => (md += `- ${s}\n`));
+      md += `\n`;
+    }
+
+    md += `## Evaluated Content\n\n`;
+    md += `### User Query\n\n\`\`\`\n${evalState.userQuery}\n\`\`\`\n\n`;
+    md += `### Agent Response\n\n\`\`\`\n${evalState.agentResponse}\n\`\`\`\n`;
+
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `evaluation-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 </script>
 
 <div class="judge-panel">
@@ -57,7 +104,10 @@
       </div>
     {:else if evalState.result}
       <div class="evaluation">
-        <button class="clear-button" onclick={() => evaluationManager.clear()}>Clear Result</button>
+        <div class="action-buttons">
+          <button class="clear-button" onclick={() => evaluationManager.clear()}>Clear Result</button>
+          <button class="export-button" onclick={exportToMarkdown}>Export .md</button>
+        </div>
         <div class="overall-score" style="--score-color: {getScoreColor(evalState.result.overallScore)}">
           <div class="score-value">{evalState.result.overallScore.toFixed(1)}</div>
           <div class="score-max">/10</div>
@@ -509,8 +559,26 @@
     font-family: monospace;
   }
 
-  .clear-button {
-    align-self: center;
-    margin-top: 4px;
+  .action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .export-button {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: rgba(201, 209, 217, 0.7);
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+  }
+
+  .export-button:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: rgba(201, 209, 217, 0.9);
   }
 </style>

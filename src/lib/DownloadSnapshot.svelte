@@ -195,7 +195,7 @@
     try {
       const data = getCurrentData();
       const content = buildInspectionSnapshot(data);
-      downloadFile(content, "maid-inspection-snap.txt", "text/plain");
+      downloadFile(content, `maid-snapshot-${Date.now()}.txt`, "text/plain");
     } catch (error) {
       console.error("Failed to generate snapshot:", error);
     } finally {
@@ -210,7 +210,7 @@
       const data = getCurrentData();
       const snapshot = buildJsonSnapshot(data);
       const content = JSON.stringify(snapshot, null, 2);
-      downloadFile(content, "maid-snapshot.json", "application/json");
+      downloadFile(content, `maid-snapshot-${Date.now()}.json`, "application/json");
     } catch (error) {
       console.error("Failed to generate JSON snapshot:", error);
     } finally {
