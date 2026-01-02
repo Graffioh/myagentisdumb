@@ -198,11 +198,7 @@ Evaluate your agent responses using LLM-based scoring on 5 criteria: correctness
 Requires `OPENROUTER_API_KEY` in your `.env` file.
 
 ```ts
-const response = await fetch("http://localhost:6969/api/inspection/evaluate", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ userQuery, agentResponse, systemPrompt }),
-});
+await inspectionReporter.evaluable(userInput, finalContent, requestTokenUsage); // optional: customEvaluationPrompt
 ```
 
 Returns scores (1-10), overall score, summary, strengths, weaknesses, and suggestions.
