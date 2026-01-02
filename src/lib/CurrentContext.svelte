@@ -2,17 +2,11 @@
   import { onDestroy, onMount } from "svelte";
   import ContextUsageBar from "./ContextUsageBar.svelte";
   import { snapshot } from "../utils/snapshot.svelte";
-  import type {
-    AgentToolDefinition,
-    ContextMessage,
-  } from "../../protocol/types";
-  import type { TokenUsage } from "../../protocol/types";
+  import { subscribeSSE } from "../utils/sse.svelte";
 
   let contextExpanded = $state(false);
   let activeTab: "context" | "tools" | "usage" = $state("usage");
-  let contextEventSource: EventSource | null = null;
-  let tokenEventSource: EventSource | null = null;
-  let toolEventSource: EventSource | null = null;
+  let unsubscribeSSE: (() => void) | null = null;
 
   const context = $derived(snapshot.context);
   const toolDefinitions = $derived(snapshot.toolDefinitions);
@@ -94,9 +88,6 @@
     };
   });
 
-  const INSPECTION_URL =
-    import.meta.env.VITE_INSPECTION_URL ?? "http://localhost:6969/api";
-
   function formatTokens(num: number | null): string {
     if (num === null) {
       return "?";
@@ -108,66 +99,25 @@
   }
 
   onMount(() => {
-    contextEventSource = new EventSource(
-      INSPECTION_URL + "/inspection/context"
-    );
-
-    contextEventSource.onmessage = (event: MessageEvent) => {
-      if (snapshot.viewMode === "snapshot") return;
-      try {
-        const newContext = JSON.parse(event.data);
-        snapshot.context = newContext;
-      } catch (e) {
-        console.error("Failed to parse context data:", e);
-      }
-    };
-
-    contextEventSource.onerror = (e) => {
-      console.error("Context SSE connection error", e);
-    };
-
-    tokenEventSource = new EventSource(INSPECTION_URL + "/inspection/tokens");
-
-    tokenEventSource.onmessage = (event: MessageEvent) => {
-      if (snapshot.viewMode === "snapshot") return;
-      try {
-        const data = JSON.parse(event.data);
-        if (data.totalTokens !== undefined) {
-          snapshot.tokenUsage = data;
-        }
-      } catch (e) {
-        console.error("Failed to parse token data:", e);
-      }
-    };
-
-    tokenEventSource.onerror = (e) => {
-      console.error("Token SSE connection error", e);
-    };
-
-    toolEventSource = new EventSource(INSPECTION_URL + "/inspection/tools");
-
-    toolEventSource.onmessage = (event: MessageEvent) => {
-      if (snapshot.viewMode === "snapshot") return;
-      try {
-        const tools = JSON.parse(event.data);
+    unsubscribeSSE = subscribeSSE({
+      onContext: (ctx) => {
+        if (snapshot.viewMode === "snapshot") return;
+        snapshot.context = ctx;
+      },
+      onTokens: (tokens) => {
+        if (snapshot.viewMode === "snapshot") return;
+        snapshot.tokenUsage = tokens;
+      },
+      onTools: (tools) => {
+        if (snapshot.viewMode === "snapshot") return;
         snapshot.toolDefinitions = tools;
-      } catch (e) {
-        console.error("Failed to parse tool definitions data:", e);
-      }
-    };
-
-    toolEventSource.onerror = (e) => {
-      console.error("Tool definitions SSE connection error", e);
-    };
+      },
+    });
   });
 
   onDestroy(() => {
-    contextEventSource?.close();
-    contextEventSource = null;
-    tokenEventSource?.close();
-    tokenEventSource = null;
-    toolEventSource?.close();
-    toolEventSource = null;
+    unsubscribeSSE?.();
+    unsubscribeSSE = null;
   });
 </script>
 

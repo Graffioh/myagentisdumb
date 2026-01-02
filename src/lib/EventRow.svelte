@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { InspectionEventDisplay } from "../types";
   import { InspectionEventLabel } from "../../protocol/types";
+  import { evaluationStore } from "../stores/evaluation.svelte";
 
   interface Props {
     event: InspectionEventDisplay;
@@ -15,6 +16,21 @@
     onToggleExpand,
     onRemove,
   }: Props = $props();
+
+  const isEvaluable = $derived(!!event.inspectionEvent.evaluable);
+  const userQuery = $derived(event.inspectionEvent.userQuery || "");
+  const isEvaluating = $derived(evaluationStore.state.isLoading);
+
+  async function handleEvaluate() {
+    if (!isEvaluable) return;
+    
+    const contentChild = event.inspectionEvent.children?.find(
+      (child) => child.label === InspectionEventLabel.Content
+    );
+    const agentResponse = contentChild?.data || event.data;
+    
+    await evaluationStore.evaluate(userQuery, agentResponse);
+  }
 
   function getFirstLine(data: string): string {
     return data.split("\n")[0];
@@ -145,7 +161,21 @@
       </div>
     </div>
   </button>
-  <div class="remove-container">
+  <div class="actions-container">
+    {#if isEvaluable}
+      <button
+        class="evaluate-button"
+        onclick={handleEvaluate}
+        disabled={isEvaluating}
+        title="Evaluate with LLM Judge"
+      >
+        {#if isEvaluating}
+          <span class="eval-text">...</span>
+        {:else}
+          <span class="eval-text">eval</span>
+        {/if}
+      </button>
+    {/if}
     <button
       class="remove-button"
       onclick={() => onRemove(event.id)}
@@ -394,11 +424,43 @@
     border: 1px solid rgba(255, 255, 255, 0.06);
   }
 
-  .remove-container {
+  .actions-container {
     display: flex;
     align-items: flex-start;
     gap: 6px;
     flex-shrink: 0;
+  }
+
+  .evaluate-button {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 2px 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+
+  .eval-text {
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .evaluate-button:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.7);
+    background: rgba(99, 179, 237, 0.1);
+  }
+
+  .evaluate-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .remove-button {

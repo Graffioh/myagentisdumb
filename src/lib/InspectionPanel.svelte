@@ -8,6 +8,7 @@
   import { InspectionEventLabel, type InspectionEvent, type MaidSnapshot } from "../../protocol/types";
   import { load, save } from "../utils/persistence";
   import { snapshot } from "../utils/snapshot.svelte";
+  import { subscribeSSE } from "../utils/sse.svelte";
 
   interface Props {
     onOpenChat?: () => void;
@@ -24,9 +25,7 @@
   let highlightedEventId = $state<number | null>(null);
   let labelFilter = $state<LabelFilter>("all");
 
-  let traceEventSource: EventSource | null = null;
-  let modelEventSource: EventSource | null = null;
-  let agentStatusEventSource: EventSource | null = null;
+  let unsubscribeSSE: (() => void) | null = null;
   let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Filter events based on label filter - show all events from invocation groups that contain the label
@@ -85,53 +84,11 @@
     return Math.round((errorCount / invocationCount) * 100 * 100) / 100;
   });
 
-  const INSPECTION_URL =
-    import.meta.env.VITE_INSPECTION_URL || "http://localhost:6969/api";
-
-  function pushEvent(data: string) {
-    let inspectionEvent: InspectionEvent;
-    let displayData: string;
-
-    try {
-      const parsed = JSON.parse(data);
-
-      // if children exists, it's a structured trace; otherwise it's a log
-      if (parsed && typeof parsed === "object") {
-        const invocationId = typeof parsed.invocationId === "string" ? parsed.invocationId : undefined;
-        if (Array.isArray(parsed.children)) {
-          // Trace event: has children
-          inspectionEvent = {
-            message: parsed.message || "No message",
-            children: parsed.children as InspectionEvent["children"],
-            invocationId,
-          };
-          displayData = parsed.message || "No message";
-        } else if (typeof parsed.message === "string") {
-          // Log event: has message
-          inspectionEvent = {
-            message: parsed.message,
-            invocationId,
-          };
-          displayData = parsed.message;
-        } else {
-          // Fallback: treat as log event
-          inspectionEvent = { message: data };
-          displayData = data;
-        }
-      } else {
-        // Not an object, treat as log event
-        inspectionEvent = { message: data };
-        displayData = data;
-      }
-    } catch {
-      inspectionEvent = { message: data };
-      displayData = data;
-    }
-
+  function pushEvent(inspectionEvent: InspectionEvent) {
     const eventData: InspectionEventDisplay = {
       id: eventId++,
       ts: Date.now(),
-      data: displayData,
+      data: inspectionEvent.message,
       expanded: false,
       inspectionEvent,
       invocationId: inspectionEvent.invocationId,
@@ -237,7 +194,6 @@
   }
 
   onMount(() => {
-    // Load persisted events and eventId
     const storedEvents = load<InspectionEventDisplay[]>("events", []);
     const storedEventId = load<number>("eventId", 0);
 
@@ -253,78 +209,28 @@
       eventId = Math.max(storedEventId, maxId + 1);
     }
 
-    traceEventSource = new EventSource(INSPECTION_URL + "/inspection/trace");
-
-    traceEventSource.onopen = () => {
-      status = "connected";
-      lastError = null;
-    };
-
-    traceEventSource.onmessage = (event: MessageEvent) => {
-      // Safari may not fire onopen reliably, so mark as connected on first message
-      if (status === "connecting") {
+    unsubscribeSSE = subscribeSSE({
+      onTrace: (event) => {
+        if (snapshot.viewMode === "snapshot") return;
+        pushEvent(event);
+      },
+      onModel: (model) => {
+        if (snapshot.viewMode === "snapshot") return;
+        modelName = model;
+        snapshot.modelName = model;
+      },
+      onAgentStatus: (connected) => {
+        agentConnected = connected;
+      },
+      onConnected: () => {
         status = "connected";
         lastError = null;
-      }
-
-      if (snapshot.viewMode === "snapshot") return;
-
-      const data = String(event.data ?? "");
-      // Filter out the initial connection message
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed?.message === "connected") {
-          return;
-        }
-      } catch {
-        // Do nothing
-      }
-
-      pushEvent(data);
-    };
-
-    traceEventSource.onerror = () => {
-      status = "error";
-      lastError = "SSE connection error";
-    };
-
-    modelEventSource = new EventSource(INSPECTION_URL + "/inspection/model");
-
-    modelEventSource.onmessage = (event: MessageEvent) => {
-      if (snapshot.viewMode === "snapshot") return;
-      try {
-        const data = JSON.parse(event.data);
-        if (data.model !== undefined) {
-          modelName = data.model;
-          snapshot.modelName = modelName;
-        }
-      } catch (e) {
-        console.error("Failed to parse model data:", e);
-      }
-    };
-
-    modelEventSource.onerror = () => {
-      console.error("Model SSE connection error");
-    };
-
-    agentStatusEventSource = new EventSource(
-      INSPECTION_URL + "/inspection/agent-status"
-    );
-
-    agentStatusEventSource.onmessage = (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.connected !== undefined) {
-          agentConnected = data.connected;
-        }
-      } catch (e) {
-        console.error("Failed to parse agent status data:", e);
-      }
-    };
-
-    agentStatusEventSource.onerror = () => {
-      console.error("Agent status SSE connection error");
-    };
+      },
+      onError: () => {
+        status = "error";
+        lastError = "SSE connection error";
+      },
+    });
   });
 
   onDestroy(() => {
@@ -332,12 +238,8 @@
       clearTimeout(highlightTimeout);
       highlightTimeout = null;
     }
-    traceEventSource?.close();
-    traceEventSource = null;
-    modelEventSource?.close();
-    modelEventSource = null;
-    agentStatusEventSource?.close();
-    agentStatusEventSource = null;
+    unsubscribeSSE?.();
+    unsubscribeSSE = null;
   });
 </script>
 

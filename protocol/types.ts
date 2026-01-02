@@ -86,6 +86,48 @@ export type InspectionEvent = {
   message: string;
   children?: InspectionEventChild[];
   invocationId?: string;
+  evaluable?: boolean;
+  userQuery?: string;
+};
+
+/**
+ * SSE Event types for unified streaming endpoint
+ */
+export enum SSEEventType {
+  Trace = "trace",
+  Context = "context",
+  Tokens = "tokens",
+  Tools = "tools",
+  Model = "model",
+  AgentStatus = "agent-status",
+}
+
+export type SSEEvent = 
+  | { type: SSEEventType.Trace; payload: InspectionEvent }
+  | { type: SSEEventType.Context; payload: ContextMessage[] }
+  | { type: SSEEventType.Tokens; payload: { totalTokens: number; contextLimit: number | null; remainingTokens: number | null } }
+  | { type: SSEEventType.Tools; payload: AgentToolDefinition[] }
+  | { type: SSEEventType.Model; payload: { model: string } }
+  | { type: SSEEventType.AgentStatus; payload: { connected: boolean } };
+
+/**
+ * LLM-as-a-Judge evaluation result
+ */
+export type EvaluationScores = {
+  correctness: number;
+  completeness: number;
+  clarity: number;
+  relevance: number;
+  helpfulness: number;
+};
+
+export type EvaluationResult = {
+  scores: EvaluationScores;
+  overallScore: number;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
 };
 
 /**

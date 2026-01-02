@@ -307,22 +307,7 @@ export async function runLoop(userInput: string, model: string = DEFAULT_MODEL) 
             await inspectionReporter.error("Empty content returned", "Model returned empty or null content");
         }
 
-        if (reasoning) {
-            await inspectionReporter.trace(
-                "Final Assistant message",
-                [
-                    { label: InspectionEventLabel.Reasoning, data: reasoning },
-                    { label: InspectionEventLabel.Content, data: finalContent }
-                ],
-                requestTokenUsage
-            );
-        } else {
-            await inspectionReporter.trace(
-                "Final Assistant message",
-                [{ label: InspectionEventLabel.Content, data: finalContent }],
-                requestTokenUsage
-            );
-        }
+        await inspectionReporter.evaluable(userInput, finalContent, requestTokenUsage);
 
         await updateContext({
             role: "assistant",
