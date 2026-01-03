@@ -3,13 +3,27 @@
   import { InspectionEventLabel } from "../../protocol/types";
   import { formatLatency } from "../utils/latency";
 
+  const TRUNCATE_MAX = 50;
+  const MIN_EVENT_GAP_MS = 100;
+  const LAST_EVENT_MIN_DURATION_MS = 200;
+  const LANE_HEIGHT_PX = 24;
+  const MIN_TRACK_HEIGHT_PX = 28;
+  const TRACK_LABEL_WIDTH_PX = 50;
+  const TIME_LABEL_MIN_SPACING_PX = 60;
+  const MAX_TIME_LABELS = 100;
+  const MIN_BAR_WIDTH_PX = 50;
+  const BASE_WIDTH_PER_MS = 0.15;
+  const MIN_ZOOM = 0.01;
+  const MAX_ZOOM = 10.0;
+  const ZOOM_SENSITIVITY = 0.001;
+
   interface Props {
     events: InspectionEventDisplay[];
     onSelectEvent?: (eventId: number) => void;
     latencyPercentiles?: { p50: number; p95: number; p99: number };
+    zoomLevel?: number;
+    onZoomChange?: (zoom: number) => void;
   }
-
-  let { events, onSelectEvent, latencyPercentiles }: Props = $props();
 
   type TimelineItem = {
     id: number;
@@ -35,8 +49,19 @@
 
   type ChildEvent = NonNullable<InspectionEventDisplay["inspectionEvent"]["children"]>[number];
 
-  function truncate(text: string, max = 50): string {
+  let { events, onSelectEvent, latencyPercentiles, zoomLevel = 1.0, onZoomChange }: Props = $props();
+
+  function truncate(text: string, max = TRUNCATE_MAX): string {
     return text.length > max ? text.slice(0, max - 3) + "..." : text;
+  }
+
+  function parseDuration(child: ChildEvent | undefined, fallbackMs: number): number {
+    if (!child) return fallbackMs;
+    const match = child.data.match(/(\d+(?:\.\d+)?)\s*(ms|s)/i);
+    if (!match) return fallbackMs;
+    let duration = parseFloat(match[1]);
+    if (match[2].toLowerCase() === "s") duration *= 1000;
+    return duration || fallbackMs;
   }
 
   function getToolName(obj: unknown): string | null {
@@ -45,7 +70,7 @@
     return o.function?.name ?? o.name ?? null;
   }
 
-  function assignLanes(items: Omit<TimelineItem, 'lane'>[]): TimelineItem[] {
+  function assignLanes(items: Omit<TimelineItem, "lane">[]): TimelineItem[] {
     const result: TimelineItem[] = [];
     const lanes: { endTime: number }[] = [];
 
@@ -54,11 +79,9 @@
       let minEndTime = Infinity;
 
       for (let l = 0; l < lanes.length; l++) {
-        if (item.startTime >= lanes[l].endTime) {
-          if (lanes[l].endTime < minEndTime) {
-            minEndTime = lanes[l].endTime;
-            assignedLane = l;
-          }
+        if (item.startTime >= lanes[l].endTime && lanes[l].endTime < minEndTime) {
+          minEndTime = lanes[l].endTime;
+          assignedLane = l;
         }
       }
 
@@ -75,128 +98,137 @@
     return result;
   }
 
-  const timelineData: TimelineData = $derived.by(() => {
-    const items: Omit<TimelineItem, 'lane'>[] = [];
+  function extractChildren(children: ChildEvent[]): {
+    timingChild?: ChildEvent;
+    toolChild?: ChildEvent;
+    contentChild?: ChildEvent;
+    reasoningChild?: ChildEvent;
+    errorChild?: ChildEvent;
+  } {
+    let timingChild: ChildEvent | undefined;
+    let toolChild: ChildEvent | undefined;
+    let contentChild: ChildEvent | undefined;
+    let reasoningChild: ChildEvent | undefined;
+    let errorChild: ChildEvent | undefined;
+
+    for (const c of children) {
+      switch (c.label) {
+        case InspectionEventLabel.Timing:
+          timingChild ??= c;
+          break;
+        case InspectionEventLabel.ToolCalls:
+          toolChild ??= c;
+          break;
+        case InspectionEventLabel.Content:
+          contentChild ??= c;
+          break;
+        case InspectionEventLabel.Reasoning:
+          reasoningChild ??= c;
+          break;
+        case InspectionEventLabel.Error:
+          errorChild ??= c;
+          break;
+      }
+    }
+
+    return { timingChild, toolChild, contentChild, reasoningChild, errorChild };
+  }
+
+  function parseToolItems(
+    toolChild: ChildEvent,
+    baseItem: Omit<TimelineItem, "lane" | "name" | "type" | "id">,
+    nextId: () => number
+  ): Omit<TimelineItem, "lane">[] {
+    const items: Omit<TimelineItem, "lane">[] = [];
+
+    try {
+      const parsed: unknown = JSON.parse(toolChild.data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        for (const t of parsed) {
+          items.push({
+            ...baseItem,
+            id: nextId(),
+            type: "tool",
+            name: getToolName(t) ?? "tool",
+          });
+        }
+      } else {
+        items.push({
+          ...baseItem,
+          id: nextId(),
+          type: "tool",
+          name: getToolName(parsed) ?? "tool",
+        });
+      }
+    } catch {
+      const patterns = [/"name"\s*:\s*"([^"]+)"/, /"function"\s*:\s*\{\s*"name"\s*:\s*"([^"]+)"/];
+      for (const pattern of patterns) {
+        const match = toolChild.data.match(pattern);
+        if (match) {
+          items.push({
+            ...baseItem,
+            id: nextId(),
+            type: "tool",
+            name: match[1],
+          });
+          break;
+        }
+      }
+    }
+
+    return items;
+  }
+
+  function buildTimelineItems(events: InspectionEventDisplay[]): {
+    items: Omit<TimelineItem, "lane">[];
+    minTime: number;
+    maxTime: number;
+  } {
+    const items: Omit<TimelineItem, "lane">[] = [];
     let minTime = Infinity;
     let maxTime = 0;
+    let itemIdCounter = 0;
+
+    const nextId = () => itemIdCounter++;
 
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
       const children = event.inspectionEvent.children;
       if (!children) continue;
 
-      let timingChild: ChildEvent | undefined;
-      let toolChild: ChildEvent | undefined;
-      let contentChild: ChildEvent | undefined;
-      let reasoningChild: ChildEvent | undefined;
-      let errorChild: ChildEvent | undefined;
+      const { timingChild, toolChild, contentChild, reasoningChild, errorChild } = extractChildren(children);
 
-      for (const c of children) {
-        switch (c.label) {
-          case InspectionEventLabel.Timing:
-            timingChild ??= c;
-            break;
-          case InspectionEventLabel.ToolCalls:
-            toolChild ??= c;
-            break;
-          case InspectionEventLabel.Content:
-            contentChild ??= c;
-            break;
-          case InspectionEventLabel.Reasoning:
-            reasoningChild ??= c;
-            break;
-          case InspectionEventLabel.Error:
-            errorChild ??= c;
-            break;
-        }
-      }
+      const fallbackDuration =
+        i < events.length - 1
+          ? Math.max(events[i + 1].ts - event.ts, MIN_EVENT_GAP_MS)
+          : LAST_EVENT_MIN_DURATION_MS;
 
-      let duration = 0;
-      if (timingChild) {
-        const match = timingChild.data.match(/(\d+(?:\.\d+)?)\s*(ms|s)/i);
-        if (match) {
-          duration = parseFloat(match[1]);
-          if (match[2].toLowerCase() === 's') duration *= 1000;
-        }
-      }
+      const duration = parseDuration(timingChild, fallbackDuration);
 
-      if (duration === 0 && i < events.length - 1) {
-        const nextTs = events[i + 1].ts;
-        duration = Math.max(nextTs - event.ts, 100);
-      } else if (duration === 0) {
-        duration = 200;
-      }
+      const baseItem = {
+        eventId: event.id,
+        startTime: event.ts,
+        duration,
+        invocationId: event.invocationId,
+      };
 
       if (toolChild) {
-        try {
-          const parsed: unknown = JSON.parse(toolChild.data);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            for (const t of parsed) {
-              const toolName = getToolName(t) ?? "tool";
-              items.push({
-                id: items.length,
-                eventId: event.id,
-                type: "tool" as const,
-                name: toolName,
-                startTime: event.ts,
-                duration,
-                invocationId: event.invocationId,
-              });
-            }
-          } else {
-            const toolName = getToolName(parsed) ?? "tool";
-            items.push({
-              id: items.length,
-              eventId: event.id,
-              type: "tool" as const,
-              name: toolName,
-              startTime: event.ts,
-              duration,
-              invocationId: event.invocationId,
-            });
-          }
-        } catch {
-          const patterns = [
-            /"name"\s*:\s*"([^"]+)"/,
-            /"function"\s*:\s*\{\s*"name"\s*:\s*"([^"]+)"/,
-          ];
-          for (const pattern of patterns) {
-            const match = toolChild.data.match(pattern);
-            if (match) {
-              items.push({
-                id: items.length,
-                eventId: event.id,
-                type: "tool" as const,
-                name: match[1],
-                startTime: event.ts,
-                duration,
-                invocationId: event.invocationId,
-              });
-              break;
-            }
-          }
-        }
+        items.push(...parseToolItems(toolChild, baseItem, nextId));
       } else if (contentChild || reasoningChild) {
         items.push({
-          id: items.length,
-          eventId: event.id,
-          type: "llm" as const,
+          ...baseItem,
+          id: nextId(),
+          type: "llm",
           name: truncate(event.inspectionEvent.message),
-          startTime: event.ts,
-          duration,
-          invocationId: event.invocationId,
         });
       }
 
       if (errorChild) {
         items.push({
-          id: items.length,
-          eventId: event.id,
-          type: "error" as const,
+          ...baseItem,
+          id: nextId(),
+          type: "error",
           name: truncate(errorChild.data),
-          startTime: event.ts,
-          duration,
-          invocationId: event.invocationId,
         });
       }
 
@@ -205,43 +237,55 @@
       if (end > maxTime) maxTime = end;
     }
 
-    const llmItems = assignLanes(items.filter(i => i.type === "llm").sort((a, b) => a.startTime - b.startTime));
-    const toolItems = assignLanes(items.filter(i => i.type === "tool").sort((a, b) => a.startTime - b.startTime));
-    const errorItems = assignLanes(items.filter(i => i.type === "error").sort((a, b) => a.startTime - b.startTime));
-    const llmLaneCount = llmItems.length > 0 ? Math.max(...llmItems.map(i => i.lane)) + 1 : 1;
-    const toolLaneCount = toolItems.length > 0 ? Math.max(...toolItems.map(i => i.lane)) + 1 : 1;
-    const errorLaneCount = errorItems.length > 0 ? Math.max(...errorItems.map(i => i.lane)) + 1 : 1;
+    return { items, minTime, maxTime };
+  }
+
+  const timelineData: TimelineData = $derived.by(() => {
+    const { items, minTime, maxTime } = buildTimelineItems(events);
+
+    const llmItems = assignLanes(
+      items.filter((i) => i.type === "llm").sort((a, b) => a.startTime - b.startTime)
+    );
+    const toolItems = assignLanes(
+      items.filter((i) => i.type === "tool").sort((a, b) => a.startTime - b.startTime)
+    );
+    const errorItems = assignLanes(
+      items.filter((i) => i.type === "error").sort((a, b) => a.startTime - b.startTime)
+    );
+
+    const llmLaneCount = llmItems.length > 0 ? Math.max(...llmItems.map((i) => i.lane)) + 1 : 1;
+    const toolLaneCount = toolItems.length > 0 ? Math.max(...toolItems.map((i) => i.lane)) + 1 : 1;
+    const errorLaneCount = errorItems.length > 0 ? Math.max(...errorItems.map((i) => i.lane)) + 1 : 1;
 
     const hasItems = items.length > 0;
 
     return {
-      llmItems, 
+      llmItems,
       toolItems,
       errorItems,
-      llmLaneCount, 
+      llmLaneCount,
       toolLaneCount,
       errorLaneCount,
-      minTime: hasItems ? minTime : 0, 
-      maxTime: hasItems ? maxTime : 0 
+      minTime: hasItems ? minTime : 0,
+      maxTime: hasItems ? maxTime : 0,
     };
   });
 
   const totalDuration = $derived(timelineData.maxTime - timelineData.minTime);
-  const minWidthPerMs = 0.15;
+  const minWidthPerMs = $derived(BASE_WIDTH_PER_MS * zoomLevel);
   const trackWidth = $derived(Math.max(totalDuration * minWidthPerMs, 100));
+  const axisMarginLeft = TRACK_LABEL_WIDTH_PX + 8;
 
   const timeMarkers = $derived.by(() => {
     if (totalDuration === 0) return [0];
     const markers: number[] = [];
-    const minLabelSpacing = 60;
     const availableWidth = trackWidth;
-    const MAX_LABELS = 100;
-    const maxLabels = Math.min(MAX_LABELS, Math.floor(availableWidth / minLabelSpacing) || 1);
+    const maxLabels = Math.min(MAX_TIME_LABELS, Math.floor(availableWidth / TIME_LABEL_MIN_SPACING_PX) || 1);
     const idealInterval = totalDuration / maxLabels;
-    
+
     const niceIntervals = [100, 200, 500, 1000, 2000, 5000, 10000, 30000, 60000];
-    let interval = niceIntervals.find(i => i >= idealInterval) || idealInterval;
-    
+    const interval = niceIntervals.find((i) => i >= idealInterval) || idealInterval;
+
     for (let t = 0; t <= totalDuration; t += interval) {
       markers.push(t);
     }
@@ -255,11 +299,15 @@
   function getBarStyle(item: TimelineItem, laneCount: number): string {
     if (totalDuration === 0) return "left: 0px; width: 60px; top: 0; height: 100%;";
     const left = (item.startTime - timelineData.minTime) * minWidthPerMs;
-    const width = Math.max(item.duration * minWidthPerMs, 50);
+    const width = Math.max(item.duration * minWidthPerMs, MIN_BAR_WIDTH_PX);
     const laneGap = 2;
     const laneHeight = (100 - (laneCount - 1) * laneGap) / laneCount;
     const top = item.lane * (laneHeight + laneGap);
     return `left: ${left}px; width: ${width}px; top: ${top}%; height: ${laneHeight}%;`;
+  }
+
+  function getTrackHeight(laneCount: number): number {
+    return Math.max(MIN_TRACK_HEIGHT_PX, laneCount * LANE_HEIGHT_PX);
   }
 
   let selectedId = $state<number | null>(null);
@@ -269,24 +317,146 @@
     selectedId = item.id;
     onSelectEvent?.(item.eventId);
   }
+
+  function handleHover(id: number | null) {
+    hoveredId = id;
+  }
+
+  let scrollContainer = $state<HTMLDivElement | null>(null);
+  let isDragging = $state(false);
+  let isDraggable = $state(false);
+  let dragStartX = 0;
+  let dragScrollLeft = 0;
+
+  function setZoom(next: number) {
+    const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+    onZoomChange?.(zoom);
+  }
+
+  function handleWheel(e: WheelEvent) {
+    if (!scrollContainer) return;
+
+    e.preventDefault();
+
+    const delta = -e.deltaY * ZOOM_SENSITIVITY;
+    const newZoom = zoomLevel + delta;
+
+    if (newZoom === zoomLevel) return;
+
+    const rect = scrollContainer.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+
+    const scrollLeft = scrollContainer.scrollLeft;
+    const timeAtMouse = (scrollLeft + mouseX) / minWidthPerMs + timelineData.minTime;
+
+    const newMinWidthPerMs = BASE_WIDTH_PER_MS * Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZoom));
+    const newScrollLeft = timeAtMouse * newMinWidthPerMs - timelineData.minTime * newMinWidthPerMs - mouseX;
+
+    setZoom(newZoom);
+
+    requestAnimationFrame(() => {
+      if (scrollContainer) {
+        scrollContainer.scrollLeft = Math.max(0, newScrollLeft);
+      }
+    });
+  }
+
+  function handleMouseDown(e: MouseEvent) {
+    if (!scrollContainer || e.button !== 0) return;
+
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragScrollLeft = scrollContainer.scrollLeft;
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }
+
+  function handleMouseMove(e: MouseEvent) {
+    if (!isDragging || !scrollContainer) return;
+
+    e.preventDefault();
+
+    const deltaX = e.clientX - dragStartX;
+    scrollContainer.scrollLeft = dragScrollLeft - deltaX;
+  }
+
+  function handleMouseUp() {
+    isDragging = false;
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  }
+
+  $effect(() => {
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  });
+
+  $effect(() => {
+    const checkDraggable = () => {
+      isDraggable = scrollContainer ? scrollContainer.scrollWidth > scrollContainer.clientWidth : false;
+    };
+    checkDraggable();
+    if (!scrollContainer) return;
+    const observer = new ResizeObserver(checkDraggable);
+    observer.observe(scrollContainer);
+    return () => observer.disconnect();
+  });
+
+  $effect(() => {
+    void zoomLevel;
+    void trackWidth;
+    requestAnimationFrame(() => {
+      isDraggable = scrollContainer ? scrollContainer.scrollWidth > scrollContainer.clientWidth : false;
+    });
+  });
 </script>
+
+{#snippet timelineBar(item: TimelineItem, laneCount: number, typeClass: string)}
+  <button
+    type="button"
+    class="timeline-bar {typeClass}"
+    class:selected={selectedId === item.id}
+    class:hovered={hoveredId === item.id}
+    style={getBarStyle(item, laneCount)}
+    title="{item.name}: {formatLatency(item.duration)}"
+    aria-pressed={selectedId === item.id}
+    aria-label="{item.type.toUpperCase()} {item.name}, duration {formatLatency(item.duration)}"
+    onmouseenter={() => handleHover(item.id)}
+    onmouseleave={() => handleHover(null)}
+    onfocus={() => handleHover(item.id)}
+    onblur={() => handleHover(null)}
+    onclick={() => handleSelect(item)}
+  >
+    <span class="bar-label">{item.name}</span>
+  </button>
+{/snippet}
 
 {#if timelineData.llmItems.length + timelineData.toolItems.length + timelineData.errorItems.length === 0}
   <div class="timeline-empty">No timeline data</div>
 {:else}
   {@const totalItems = timelineData.llmItems.length + timelineData.toolItems.length + timelineData.errorItems.length}
-  <section class="timeline-container" aria-label="Timeline view">
+  <section
+    class="timeline-container"
+    aria-label="Agent telemetry timeline"
+    aria-describedby="timeline-hint"
+  >
     <div class="timeline-header">
-      <span class="timeline-title">Timeline</span>
+      <span class="timeline-title" id="timeline-title">Timeline</span>
       <span class="timeline-stats">
         <span>{totalItems} items</span>
         {#if latencyPercentiles}
-          <span class="percentiles"> • p50: {formatLatency(latencyPercentiles.p50)} | p95: {formatLatency(latencyPercentiles.p95)} | p99: {formatLatency(latencyPercentiles.p99)}</span>
+          <span class="percentiles">
+            • p50: {formatLatency(latencyPercentiles.p50)} | p95: {formatLatency(latencyPercentiles.p95)} | p99: {formatLatency(latencyPercentiles.p99)}
+          </span>
         {/if}
       </span>
     </div>
-    
-    <div class="timeline-legend">
+    <div class="timeline-hint" id="timeline-hint">Scroll to zoom • Drag to pan</div>
+
+    <div class="timeline-legend" aria-hidden="true">
       <span class="legend-item">
         <span class="legend-color llm"></span>
         <span>LLM</span>
@@ -301,81 +471,46 @@
       </span>
     </div>
 
-    <div class="timeline-scroll-container">
-      <div class="timeline-tracks" style="width: {trackWidth + 58}px;">
-        <div class="timeline-track">
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div
+      class="timeline-scroll-container"
+      class:dragging={isDragging}
+      class:draggable={isDraggable}
+      bind:this={scrollContainer}
+      onwheel={handleWheel}
+      onmousedown={handleMouseDown}
+      role="application"
+      aria-label="Zoomable and pannable timeline area"
+    >
+      <div class="timeline-tracks" style="width: {trackWidth + axisMarginLeft}px;">
+        <div class="timeline-track" role="group" aria-label="LLM events">
           <div class="track-label">LLM</div>
-          <div
-            class="track-bars"
-            style="height: {Math.max(28, timelineData.llmLaneCount * 24)}px; min-width: {trackWidth}px;"
-          >
+          <div class="track-bars" style="height: {getTrackHeight(timelineData.llmLaneCount)}px; min-width: {trackWidth}px;">
             {#each timelineData.llmItems as item (item.id)}
-              <button
-                type="button"
-                class="timeline-bar llm"
-                class:selected={selectedId === item.id}
-                class:hovered={hoveredId === item.id}
-                style={getBarStyle(item, timelineData.llmLaneCount)}
-                title="{item.name}: {formatLatency(item.duration)}"
-                onmouseenter={() => hoveredId = item.id}
-                onmouseleave={() => hoveredId = null}
-                onclick={() => handleSelect(item)}
-              >
-                <span class="bar-label">{item.name}</span>
-              </button>
+              {@render timelineBar(item, timelineData.llmLaneCount, "llm")}
             {/each}
           </div>
         </div>
 
-        <div class="timeline-track">
+        <div class="timeline-track" role="group" aria-label="Tool events">
           <div class="track-label">Tools</div>
-          <div
-            class="track-bars"
-            style="height: {Math.max(28, timelineData.toolLaneCount * 24)}px; min-width: {trackWidth}px;"
-          >
+          <div class="track-bars" style="height: {getTrackHeight(timelineData.toolLaneCount)}px; min-width: {trackWidth}px;">
             {#each timelineData.toolItems as item (item.id)}
-              <button
-                type="button"
-                class="timeline-bar tool"
-                class:selected={selectedId === item.id}
-                class:hovered={hoveredId === item.id}
-                style={getBarStyle(item, timelineData.toolLaneCount)}
-                title="{item.name}: {formatLatency(item.duration)}"
-                onmouseenter={() => hoveredId = item.id}
-                onmouseleave={() => hoveredId = null}
-                onclick={() => handleSelect(item)}
-              >
-                <span class="bar-label">{item.name}</span>
-              </button>
+              {@render timelineBar(item, timelineData.toolLaneCount, "tool")}
             {/each}
           </div>
         </div>
 
-        <div class="timeline-track">
+        <div class="timeline-track" role="group" aria-label="Error events">
           <div class="track-label">Errors</div>
-          <div
-            class="track-bars"
-            style="height: {Math.max(28, timelineData.errorLaneCount * 24)}px; min-width: {trackWidth}px;"
-          >
+          <div class="track-bars" style="height: {getTrackHeight(timelineData.errorLaneCount)}px; min-width: {trackWidth}px;">
             {#each timelineData.errorItems as item (item.id)}
-              <button
-                type="button"
-                class="timeline-bar error"
-                class:selected={selectedId === item.id}
-                class:hovered={hoveredId === item.id}
-                style={getBarStyle(item, timelineData.errorLaneCount)}
-                title="{item.name}: {formatLatency(item.duration)}"
-                onmouseenter={() => hoveredId = item.id}
-                onmouseleave={() => hoveredId = null}
-                onclick={() => handleSelect(item)}
-              >
-                <span class="bar-label">{item.name}</span>
-              </button>
+              {@render timelineBar(item, timelineData.errorLaneCount, "error")}
             {/each}
           </div>
         </div>
 
-        <div class="timeline-axis" style="min-width: {trackWidth}px; margin-left: 58px;">
+        <div class="timeline-axis" style="min-width: {trackWidth}px; margin-left: {axisMarginLeft}px;" aria-hidden="true">
           {#each timeMarkers as marker}
             <span style="left: {marker * minWidthPerMs}px;">{formatLatency(marker)}</span>
           {/each}
@@ -387,6 +522,10 @@
 
 <style>
   .timeline-container {
+    --track-label-width: 50px;
+    --track-gap: 8px;
+    --lane-height: 24px;
+    --min-track-height: 28px;
     padding: 12px;
   }
 
@@ -408,6 +547,12 @@
     font-size: 12px;
     font-weight: 600;
     color: #e6edf3;
+  }
+
+  .timeline-hint {
+    font-size: 10px;
+    color: rgba(230, 237, 243, 0.4);
+    margin-bottom: 10px;
   }
 
   .timeline-stats {
@@ -462,6 +607,15 @@
     margin-bottom: 8px;
   }
 
+  .timeline-scroll-container.draggable {
+    cursor: grab;
+  }
+
+  .timeline-scroll-container.dragging {
+    cursor: grabbing;
+    user-select: none;
+  }
+
   .timeline-tracks {
     display: flex;
     flex-direction: column;
@@ -471,11 +625,11 @@
   .timeline-track {
     display: flex;
     align-items: stretch;
-    gap: 8px;
+    gap: var(--track-gap);
   }
 
   .track-label {
-    width: 50px;
+    width: var(--track-label-width);
     font-size: 10px;
     color: rgba(230, 237, 243, 0.6);
     text-align: right;
@@ -504,6 +658,12 @@
     overflow: hidden;
     padding: 0 4px;
     font: inherit;
+  }
+
+  .timeline-bar:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 1px;
+    z-index: 12;
   }
 
   .timeline-bar.llm {

@@ -34,6 +34,7 @@
   } = $props();
 
   let showTimeline = $state(false);
+  let zoomLevel = $state(1.0);
 
   function formatDuration(startTs: number, endTs: number): string {
     const ms = Math.max(0, endTs - startTs);
@@ -144,7 +145,7 @@
   </div>
   {#if showTimeline}
     <div class="group-timeline">
-      <TimelineView events={group.events} onSelectEvent={onSelectEvent} latencyPercentiles={latencyPercentiles} />
+      <TimelineView events={group.events} onSelectEvent={onSelectEvent} latencyPercentiles={latencyPercentiles} zoomLevel={zoomLevel} onZoomChange={(z) => zoomLevel = z} />
     </div>
   {/if}
   {#if isExpanded}

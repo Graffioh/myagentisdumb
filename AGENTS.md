@@ -39,6 +39,7 @@ Write clean, readable, maintainable code without useless comments and YOU MUST F
 ### Svelte
 
 - Write Svelte 5 idiomatic code
+- Run `svelte-check` to check for type errors
 
 ### TypeScript
 
@@ -50,6 +51,7 @@ Write clean, readable, maintainable code without useless comments and YOU MUST F
 ## Development
 
 - When asked to implement or bug fix a feature in the UI, use the playwright skill.
+- When using commands, execute this to copy the thoughts directory inside my Obsidian vault: `cp -r ~/Desktop/myagentisdumb/thoughts ~/Desktop/berto/`
 
 ## Skills
 
@@ -57,4 +59,5 @@ Write clean, readable, maintainable code without useless comments and YOU MUST F
 
 - Check /e2e/ folder for the reference tests
 - Use :5555 port for the frontend (even if it's not shown when asked with commands)
+- Always run without --headed
 - Clear localStorage before checking the new code
