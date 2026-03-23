@@ -7,7 +7,7 @@
 
 my agent is dumb (maid) is a telemetry dev tool to inspect your agent behavior via agent traces.
 
-*(Under development)*
+*(~~Under development~~ toy project - discontinued)*
 
 ## Why this and not other solutions?
 
